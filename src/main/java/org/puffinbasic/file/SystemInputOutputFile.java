@@ -61,7 +61,7 @@ public class SystemInputOutputFile implements PuffinBasicFile {
     @Override
     public String readLine() {
         try {
-            return in.readLine().stripTrailing();
+            return in.readLine().replaceFirst("\\s*$", ""); // stripTrailing();
         } catch (IOException e) {
             throw new PuffinBasicRuntimeError(
                     IO_ERROR,

@@ -68,7 +68,7 @@ public interface Scope {
 
         @Override
         public Scope createChild(int funcId, boolean localScope) {
-            var child = funcIdToScope.get(funcId);
+            Scope child = funcIdToScope.get(funcId);
             if (child == null) {
                 child = localScope ? new LocalScope(this) : new ChildScope(this);
                 funcIdToScope.put(funcId, child);
@@ -113,7 +113,7 @@ public interface Scope {
                     newLen = newLen << 1;
                 } while (newLen < index);
             }
-            var newEntryMap = new STEntry[newLen];
+            STEntry[] newEntryMap = new STEntry[newLen];
             System.arraycopy(entryMap, 0, newEntryMap, 0, entryMap.length);
             entryMap = newEntryMap;
         }
@@ -188,7 +188,7 @@ public interface Scope {
 
         @Override
         public Scope createChild(int funcId, boolean localScope) {
-            var child = funcIdToScope.get(funcId);
+            Scope child = funcIdToScope.get(funcId);
             if (child == null) {
                 child = new ChildScope(this);
                 funcIdToScope.put(funcId, child);
@@ -289,7 +289,7 @@ public interface Scope {
 
         @Override
         public Scope createChild(int funcId, boolean localScope) {
-            var child = funcIdToScope.get(funcId);
+            Scope child = funcIdToScope.get(funcId);
             if (child == null) {
                 child = new ChildScope(this);
                 funcIdToScope.put(funcId, child);

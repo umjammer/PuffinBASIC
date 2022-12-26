@@ -1,23 +1,22 @@
 package org.puffinbasic;
 
-import org.junit.Before;
-import org.junit.Test;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Instant;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.puffinbasic.PuffinBasicInterpreterMain.UserOptions;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
 import org.puffinbasic.runtime.Environment;
 import org.puffinbasic.runtime.Environment.SystemEnv;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Instant;
-
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.puffinbasic.PuffinBasicInterpreterMain.interpretAndRun;
 import static org.puffinbasic.error.PuffinBasicRuntimeError.ErrorCode.IO_ERROR;
 
@@ -25,7 +24,7 @@ public class IntegrationTest {
 
     private Environment env;
 
-    @Before
+    @BeforeEach
     public void setup() {
         env = new SystemEnv();
     }
@@ -153,7 +152,7 @@ public class IntegrationTest {
         env.set("TEST_TMP_DIR", tmpdir);
         env.set("TEST_FILENAME", filename);
         runTest("randomaccessfile.bas", "randomaccessfile.bas.output");
-        Files.delete(Path.of(tmpdir, filename));
+        Files.delete(Paths.get(tmpdir, filename));
     }
 
     @Test
@@ -164,7 +163,7 @@ public class IntegrationTest {
         env.set("TEST_TMP_DIR", tmpdir);
         env.set("TEST_SEQ_FILENAME", filename);
         runTest("sequentialaccessfile.bas", "sequentialaccessfile.bas.output");
-        Files.delete(Path.of(tmpdir, filename));
+        Files.delete(Paths.get(tmpdir, filename));
     }
 
     @Test
@@ -188,8 +187,8 @@ public class IntegrationTest {
     }
 
     private void runTest(String source, String output) {
-        var bos = new ByteArrayOutputStream();
-        var out = new PrintStream(bos);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(bos);
         interpretAndRun(
                 UserOptions.ofTest(),
                 loadSourceCodeFromResource(source),
@@ -199,7 +198,7 @@ public class IntegrationTest {
 
         assertEquals(
                 loadOutputFromResource(output),
-                new String(bos.toByteArray())
+                bos.toString()
         );
     }
 
@@ -214,9 +213,9 @@ public class IntegrationTest {
     }
 
     private static String loadResource(URL resource) {
-        try (InputStream in = new BufferedInputStream(resource.openStream())) {
-            return new String(in.readAllBytes());
-        } catch (IOException e) {
+        try {
+            return new String(Files.readAllBytes(Paths.get(resource.toURI())));
+        } catch (IOException | URISyntaxException e) {
             throw new PuffinBasicRuntimeError(
                     IO_ERROR,
                     "Failed to read file: " + resource + ", error: " + e.getMessage()

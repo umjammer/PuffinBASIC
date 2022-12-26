@@ -263,7 +263,7 @@ public class PuffinBasicIR {
             PuffinBasicSourceFile sourceFile, int linenum, int startIndex, int stopIndex,
             @NotNull OpCode opCode, int op1, int op2, int result)
     {
-        var instruction = new Instruction(
+        Instruction instruction = new Instruction(
                 new InputRef(sourceFile, linenum, startIndex, stopIndex), opCode, op1, op2, result);
         instructions.add(instruction);
         return instruction;

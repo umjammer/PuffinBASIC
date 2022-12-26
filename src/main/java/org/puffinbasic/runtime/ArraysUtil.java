@@ -40,7 +40,7 @@ final class ArraysUtil {
 
     static void dim(PuffinBasicSymbolTable symbolTable, List<Instruction> params, Instruction instruction) {
         IntList dims = new IntArrayList(params.size());
-        for (var param : params) {
+        for (Instruction param : params) {
             dims.add(symbolTable.get(param.op1).getValue().getInt32());
         }
         symbolTable.get(instruction.op1).getValue().setArrayDimensions(dims);
@@ -53,22 +53,22 @@ final class ArraysUtil {
 
     static void allocArray(PuffinBasicSymbolTable symbolTable, List<Instruction> params, Instruction instruction) {
         IntList dims = new IntArrayList(params.size());
-        for (var param : params) {
+        for (Instruction param : params) {
             dims.add(symbolTable.get(param.op1).getValue().getInt32());
         }
-        var arrayEntry = symbolTable.get(instruction.result);
-        var arrayType = (ArrayType) arrayEntry.getType();
+        STEntry arrayEntry = symbolTable.get(instruction.result);
+        ArrayType arrayType = (ArrayType) arrayEntry.getType();
         arrayType.setArrayDimensions(dims);
         arrayEntry.getValue().setArrayDimensions(dims);
     }
 
     static void reallocArray(PuffinBasicSymbolTable symbolTable, List<Instruction> params, Instruction instruction) {
         IntList dims = new IntArrayList(params.size());
-        for (var param : params) {
+        for (Instruction param : params) {
             dims.add(symbolTable.get(param.op1).getValue().getInt32());
         }
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var arrayType = (ArrayType) arrayEntry.getType();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        ArrayType arrayType = (ArrayType) arrayEntry.getType();
         arrayType.setArrayDimensions(dims);
         // Create new value
         ((AbstractSTEntry) arrayEntry).createAndSetInstance(symbolTable);
@@ -80,14 +80,14 @@ final class ArraysUtil {
     }
 
     static void arrayref(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var index = symbolTable.get(instruction.op1).getValue().getArrayIndex1D();
+        int index = symbolTable.get(instruction.op1).getValue().getArrayIndex1D();
         symbolTable.get(instruction.result).getValue().setArrayReferenceIndex1D(index);
     }
 
     static void arrayfill(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var array = symbolTable.get(instruction.op1).getValue();
-        var fillEntry = symbolTable.get(instruction.op2);
-        var fill = fillEntry.getValue();
+        STObjects.STValue array = symbolTable.get(instruction.op1).getValue();
+        STEntry fillEntry = symbolTable.get(instruction.op2);
+        STObjects.STValue fill = fillEntry.getValue();
 
         switch (fillEntry.getType().getAtomTypeId()) {
             case INT32:
@@ -111,10 +111,10 @@ final class ArraysUtil {
     }
 
     static void arrayCopy(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var array1Entry = symbolTable.get(instruction.op1);
-        var array1 = array1Entry.getValue();
-        var array2Entry = symbolTable.get(instruction.op2);
-        var array2 = array2Entry.getValue();
+        STEntry array1Entry = symbolTable.get(instruction.op1);
+        STObjects.STValue array1 = array1Entry.getValue();
+        STEntry array2Entry = symbolTable.get(instruction.op2);
+        STObjects.STValue array2 = array2Entry.getValue();
         if (array1Entry.getType().getAtomTypeId() != array2Entry.getType().getAtomTypeId()) {
             throw new PuffinBasicRuntimeError(
                     DATA_TYPE_MISMATCH,
@@ -173,15 +173,15 @@ final class ArraysUtil {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var shift = symbolTable.get(instruction.op2).getValue().getInt32();
-        var dims = array.getArrayDimensions();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        int shift = symbolTable.get(instruction.op2).getValue().getInt32();
+        IntList dims = array.getArrayDimensions();
         // Arrays are row-major.
-        var dim1 = dims.getInt(0);
-        var dim2 = dims.getInt(1);
-        var n = array.getTotalLength();
-        var delta = (Math.abs(shift) % dim1) * dim2;
+        int dim1 = dims.getInt(0);
+        int dim2 = dims.getInt(1);
+        int n = array.getTotalLength();
+        int delta = (Math.abs(shift) % dim1) * dim2;
         int src0, dst0, len = n - delta, fillSrc0;
         if (shift > 0) {
             src0 = 0;
@@ -233,15 +233,15 @@ final class ArraysUtil {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var shift = symbolTable.get(instruction.op2).getValue().getInt32();
-        var dims = array.getArrayDimensions();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        int shift = symbolTable.get(instruction.op2).getValue().getInt32();
+        IntList dims = array.getArrayDimensions();
         // Arrays are row-major.
-        var dim1 = dims.getInt(0);
-        var dim2 = dims.getInt(1);
-        var n = array.getTotalLength();
-        var delta = Math.abs(shift) % dim2;
+        int dim1 = dims.getInt(0);
+        int dim2 = dims.getInt(1);
+        int n = array.getTotalLength();
+        int delta = Math.abs(shift) % dim2;
         int src0, dst0, len = dim2 - delta, fillSrc0;
         if (shift > 0) {
             src0 = 0;
@@ -385,13 +385,13 @@ final class ArraysUtil {
             Instruction i1,
             Instruction instruction)
     {
-        var srcEntry = symbolTable.get(i0.op1);
-        var src = srcEntry.getValue();
-        var src0 = symbolTable.get(i0.op2).getValue().getInt32();
-        var dstEntry = symbolTable.get(i1.op1);
-        var dst = dstEntry.getValue();
-        var dst0 = symbolTable.get(i1.op2).getValue().getInt32();
-        var len = symbolTable.get(instruction.op1).getValue().getInt32();
+        STEntry srcEntry = symbolTable.get(i0.op1);
+        STObjects.STValue src = srcEntry.getValue();
+        int src0 = symbolTable.get(i0.op2).getValue().getInt32();
+        STEntry dstEntry = symbolTable.get(i1.op1);
+        STObjects.STValue dst = dstEntry.getValue();
+        int dst0 = symbolTable.get(i1.op2).getValue().getInt32();
+        int len = symbolTable.get(instruction.op1).getValue().getInt32();
         if (srcEntry.getType().getAtomTypeId() != dstEntry.getType().getAtomTypeId()) {
             throw new PuffinBasicRuntimeError(
                     DATA_TYPE_MISMATCH,
@@ -457,8 +457,8 @@ final class ArraysUtil {
     }
 
     static void array1dSort(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var entry = symbolTable.get(instruction.op1);
-        var array = entry.getValue();
+        STEntry entry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = entry.getValue();
 
         switch (entry.getType().getAtomTypeId()) {
             case INT32:
@@ -482,11 +482,11 @@ final class ArraysUtil {
     }
 
     static void array1dBinSearch(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var search = symbolTable.get(instruction.op2).getValue();
-        var result = symbolTable.get(instruction.result).getValue();
-        var index = -1;
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        STObjects.STValue search = symbolTable.get(instruction.op2).getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
+        int index = -1;
         switch (arrayEntry.getType().getAtomTypeId()) {
             case INT32:
                 index = Arrays.binarySearch(((STInt32ArrayValue) array).getValue(), search.getInt32());
@@ -510,14 +510,14 @@ final class ArraysUtil {
     }
 
     static void array1dMin(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var result = symbolTable.get(instruction.result).getValue();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         switch (arrayEntry.getType().getAtomTypeId()) {
             case INT32: {
                 int[] value = ((STInt32ArrayValue) array).getValue();
-                var min = Integer.MAX_VALUE;
-                for (var v : value) {
+                int min = Integer.MAX_VALUE;
+                for (int v : value) {
                     if (v < min) {
                         min = v;
                     }
@@ -527,8 +527,8 @@ final class ArraysUtil {
                 break;
             case INT64: {
                 long[] value = ((STInt64ArrayValue) array).getValue();
-                var min = Long.MAX_VALUE;
-                for (var v : value) {
+                long min = Long.MAX_VALUE;
+                for (long v : value) {
                     if (v < min) {
                         min = v;
                     }
@@ -538,8 +538,8 @@ final class ArraysUtil {
                 break;
             case FLOAT: {
                 float[] value = ((STFloat32ArrayValue) array).getValue();
-                var min = Float.MAX_VALUE;
-                for (var v : value) {
+                float min = Float.MAX_VALUE;
+                for (float v : value) {
                     if (v < min) {
                         min = v;
                     }
@@ -549,8 +549,8 @@ final class ArraysUtil {
                 break;
             case DOUBLE: {
                 double[] value = ((STFloat64ArrayValue) array).getValue();
-                var min = Double.MAX_VALUE;
-                for (var v : value) {
+                double min = Double.MAX_VALUE;
+                for (double v : value) {
                     if (v < min) {
                         min = v;
                     }
@@ -564,14 +564,14 @@ final class ArraysUtil {
     }
 
     static void array1dMax(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var result = symbolTable.get(instruction.result).getValue();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         switch (arrayEntry.getType().getAtomTypeId()) {
             case INT32: {
                 int[] value = ((STInt32ArrayValue) array).getValue();
-                var max = Integer.MIN_VALUE;
-                for (var v : value) {
+                int max = Integer.MIN_VALUE;
+                for (int v : value) {
                     if (v > max) {
                         max = v;
                     }
@@ -581,8 +581,8 @@ final class ArraysUtil {
             break;
             case INT64: {
                 long[] value = ((STInt64ArrayValue) array).getValue();
-                var max = Long.MIN_VALUE;
-                for (var v : value) {
+                long max = Long.MIN_VALUE;
+                for (long v : value) {
                     if (v > max) {
                         max = v;
                     }
@@ -592,8 +592,8 @@ final class ArraysUtil {
             break;
             case FLOAT: {
                 float[] value = ((STFloat32ArrayValue) array).getValue();
-                var max = Float.MIN_VALUE;
-                for (var v : value) {
+                float max = Float.MIN_VALUE;
+                for (float v : value) {
                     if (v > max) {
                         max = v;
                     }
@@ -603,8 +603,8 @@ final class ArraysUtil {
             break;
             case DOUBLE: {
                 double[] value = ((STFloat64ArrayValue) array).getValue();
-                var max = Double.MIN_VALUE;
-                for (var v : value) {
+                double max = Double.MIN_VALUE;
+                for (double v : value) {
                     if (v > max) {
                         max = v;
                     }
@@ -618,50 +618,50 @@ final class ArraysUtil {
     }
 
     static void array1dMean(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var result = symbolTable.get(instruction.result).getValue();
-        var stats = array1dSummaryStats(arrayEntry);
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
+        SummaryStatistics stats = array1dSummaryStats(arrayEntry);
         result.setFloat64(stats.getMean());
     }
 
     static void array1dStddev(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var result = symbolTable.get(instruction.result).getValue();
-        var stats = array1dSummaryStats(arrayEntry);
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
+        SummaryStatistics stats = array1dSummaryStats(arrayEntry);
         result.setFloat64(Math.sqrt(stats.getVariance()));
     }
 
     static void array1dSum(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var result = symbolTable.get(instruction.result).getValue();
-        var stats = array1dSummaryStats(arrayEntry);
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
+        SummaryStatistics stats = array1dSummaryStats(arrayEntry);
         result.setFloat64(stats.getSum());
     }
 
     static void array1dMedian(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var result = symbolTable.get(instruction.result).getValue();
-        var stats = array1dDescriptiveStats(arrayEntry);
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
+        DescriptiveStatistics stats = array1dDescriptiveStats(arrayEntry);
         result.setFloat64(stats.getPercentile(50));
     }
 
     static void array1dPercentile(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var pct = symbolTable.get(instruction.op2).getValue().getFloat64();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        double pct = symbolTable.get(instruction.op2).getValue().getFloat64();
         if (pct < 0 || pct > 100) {
             throw new PuffinBasicRuntimeError(
                     PuffinBasicRuntimeError.ErrorCode.DATA_OUT_OF_RANGE,
                     "Percentile value out of range: " + pct
             );
         }
-        var result = symbolTable.get(instruction.result).getValue();
-        var stats = array1dDescriptiveStats(arrayEntry);
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
+        DescriptiveStatistics stats = array1dDescriptiveStats(arrayEntry);
         result.setFloat64(stats.getPercentile(pct));
     }
 
     private static SummaryStatistics array1dSummaryStats(STEntry array) {
-        var stats = new SummaryStatistics();
+        SummaryStatistics stats = new SummaryStatistics();
         switch (array.getType().getAtomTypeId()) {
             case INT32: {
                 int[] value = ((STInt32ArrayValue) array.getValue()).getValue();
@@ -698,7 +698,7 @@ final class ArraysUtil {
     }
 
     private static DescriptiveStatistics array1dDescriptiveStats(STEntry array) {
-        var stats = new DescriptiveStatistics();
+        DescriptiveStatistics stats = new DescriptiveStatistics();
         switch (array.getType().getAtomTypeId()) {
             case INT32: {
                 int[] value = ((STInt32ArrayValue) array.getValue()).getValue();
@@ -739,24 +739,24 @@ final class ArraysUtil {
             List<Instruction> params,
             Instruction instruction)
     {
-        var i1 = params.get(0);
-        var i2 = params.get(1);
+        Instruction i1 = params.get(0);
+        Instruction i2 = params.get(1);
 
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var search = symbolTable.get(instruction.op2).getValue();
-        var result = symbolTable.get(instruction.result).getValue();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        STObjects.STValue search = symbolTable.get(instruction.op2).getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
 
-        var dims = array.getArrayDimensions();
+        IntList dims = array.getArrayDimensions();
         // Arrays are row-major.
-        var numRows = dims.getInt(0);
-        var numCols = dims.getInt(1);
-        var n = array.getTotalLength();
+        int numRows = dims.getInt(0);
+        int numCols = dims.getInt(1);
+        int n = array.getTotalLength();
 
-        var x1 = Math.min(Math.max(0, symbolTable.get(i1.op1).getValue().getInt32()), numCols - 1);
-        var y1 = Math.min(Math.max(0, symbolTable.get(i1.op2).getValue().getInt32()), numRows - 1);
-        var x2 = Math.min(Math.max(0, symbolTable.get(i2.op1).getValue().getInt32()), numCols - 1);
-        var y2 = Math.min(Math.max(0, symbolTable.get(i2.op2).getValue().getInt32()), numRows - 1);
+        int x1 = Math.min(Math.max(0, symbolTable.get(i1.op1).getValue().getInt32()), numCols - 1);
+        int y1 = Math.min(Math.max(0, symbolTable.get(i1.op2).getValue().getInt32()), numRows - 1);
+        int x2 = Math.min(Math.max(0, symbolTable.get(i2.op1).getValue().getInt32()), numCols - 1);
+        int y2 = Math.min(Math.max(0, symbolTable.get(i2.op2).getValue().getInt32()), numRows - 1);
 
         if (y1 * numCols + x1 >= n || y2 * numCols + x2 >= n) {
             throw new PuffinBasicRuntimeError(
@@ -786,24 +786,24 @@ final class ArraysUtil {
             List<Instruction> params,
             Instruction instruction)
     {
-        var i1 = params.get(0);
-        var i2 = params.get(1);
+        Instruction i1 = params.get(0);
+        Instruction i2 = params.get(1);
 
-        var arrayEntry = symbolTable.get(instruction.op1);
-        var array = arrayEntry.getValue();
-        var search = symbolTable.get(instruction.op2).getValue();
-        var result = symbolTable.get(instruction.result).getValue();
+        STEntry arrayEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue array = arrayEntry.getValue();
+        STObjects.STValue search = symbolTable.get(instruction.op2).getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
 
-        var dims = array.getArrayDimensions();
+        IntList dims = array.getArrayDimensions();
         // Arrays are row-major.
-        var numRows = dims.getInt(0);
-        var numCols = dims.getInt(1);
-        var n = array.getTotalLength();
+        int numRows = dims.getInt(0);
+        int numCols = dims.getInt(1);
+        int n = array.getTotalLength();
 
-        var x1 = Math.min(Math.max(0, symbolTable.get(i1.op1).getValue().getInt32()), numCols - 1);
-        var y1 = Math.min(Math.max(0, symbolTable.get(i1.op2).getValue().getInt32()), numRows - 1);
-        var x2 = Math.min(Math.max(0, symbolTable.get(i2.op1).getValue().getInt32()), numCols - 1);
-        var y2 = Math.min(Math.max(0, symbolTable.get(i2.op2).getValue().getInt32()), numRows - 1);
+        int x1 = Math.min(Math.max(0, symbolTable.get(i1.op1).getValue().getInt32()), numCols - 1);
+        int y1 = Math.min(Math.max(0, symbolTable.get(i1.op2).getValue().getInt32()), numRows - 1);
+        int x2 = Math.min(Math.max(0, symbolTable.get(i2.op1).getValue().getInt32()), numCols - 1);
+        int y2 = Math.min(Math.max(0, symbolTable.get(i2.op2).getValue().getInt32()), numRows - 1);
 
         if (y1 * numCols + x1 >= n || y2 * numCols + x2 >=n) {
             throw new PuffinBasicRuntimeError(
@@ -832,7 +832,7 @@ final class ArraysUtil {
         if (y1 <= y2) {
             for (int r = y1; r <= y2; r++) {
                 for (int c = x1; c <= x2; c++) {
-                    var v = array[r * w + c];
+                    int v = array[r * w + c];
                     if (v == search) {
                         return r;
                     }
@@ -841,7 +841,7 @@ final class ArraysUtil {
         } else {
             for (int r = y1; r >= y2; r--) {
                 for (int c = x1; c <= x2; c++) {
-                    var v = array[r * w + c];
+                    int v = array[r * w + c];
                     if (v == search) {
                         return r;
                     }
@@ -855,7 +855,7 @@ final class ArraysUtil {
         if (x1 <= x2) {
             for (int c = x1; c <= x2; c++) {
                 for (int r = y1; r <= y2; r++) {
-                    var v = array[r * w + c];
+                    int v = array[r * w + c];
                     if (v == search) {
                         return c;
                     }
@@ -864,7 +864,7 @@ final class ArraysUtil {
         } else {
             for (int c = x1; c >= x2; c--) {
                 for (int r = y1; r <= y2; r++) {
-                    var v = array[r * w + c];
+                    int v = array[r * w + c];
                     if (v == search) {
                         return c;
                     }
@@ -878,7 +878,7 @@ final class ArraysUtil {
         if (y1 <= y2) {
             for (int r = y1; r <= y2; r++) {
                 for (int c = x1; c <= x2; c++) {
-                    var v = array[r * w + c];
+                    long v = array[r * w + c];
                     if (v == search) {
                         return r;
                     }
@@ -887,7 +887,7 @@ final class ArraysUtil {
         } else {
             for (int r = y1; r >= y2; r--) {
                 for (int c = x1; c <= x2; c++) {
-                    var v = array[r * w + c];
+                    long v = array[r * w + c];
                     if (v == search) {
                         return r;
                     }
@@ -901,7 +901,7 @@ final class ArraysUtil {
         if (x1 <= x2) {
             for (int c = x1; c <= x2; c++) {
                 for (int r = y1; r <= y2; r++) {
-                    var v = array[r * w + c];
+                    long v = array[r * w + c];
                     if (v == search) {
                         return c;
                     }
@@ -910,7 +910,7 @@ final class ArraysUtil {
         } else {
             for (int c = x1; c >= x2; c--) {
                 for (int r = y1; r <= y2; r++) {
-                    var v = array[r * w + c];
+                    long v = array[r * w + c];
                     if (v == search) {
                         return c;
                     }
@@ -924,7 +924,7 @@ final class ArraysUtil {
         if (y1 <= y2) {
             for (int r = y1; r <= y2; r++) {
                 for (int c = x1; c <= x2; c++) {
-                    var v = array[r * w + c];
+                    double v = array[r * w + c];
                     if (v == search) {
                         return r;
                     }
@@ -933,7 +933,7 @@ final class ArraysUtil {
         } else {
             for (int r = y1; r >= y2; r--) {
                 for (int c = x1; c <= x2; c++) {
-                    var v = array[r * w + c];
+                    double v = array[r * w + c];
                     if (v == search) {
                         return r;
                     }

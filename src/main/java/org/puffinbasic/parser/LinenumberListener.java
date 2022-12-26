@@ -80,9 +80,9 @@ public class LinenumberListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitLine(PuffinBasicParser.LineContext ctx) {
-        final String line = input.getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        String line = input.getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
 
-        final int linenum;
+        int linenum;
         if (ctx.linenum() != null) {
             linenum = parseLinenum(ctx.linenum().DECIMAL().getText());
             numLinenum++;
@@ -91,9 +91,9 @@ public class LinenumberListener extends PuffinBasicBaseListener {
             numNoLinenum++;
         }
 
-        var oldLine = sortedLines.put(linenum, line);
+        String oldLine = sortedLines.put(linenum, line);
         if (oldLine != null) {
-            var message = "Duplicate line number!" + System.lineSeparator() +
+            String message = "Duplicate line number!" + System.lineSeparator() +
                     "OLD:" + System.lineSeparator() +
                     oldLine +
                     "NEW:" + System.lineSeparator() +
@@ -132,13 +132,13 @@ public class LinenumberListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitImportstmt(PuffinBasicParser.ImportstmtContext ctx) {
-        var filename = unquote(ctx.filename.STRING().getText());
+        String filename = unquote(ctx.filename.STRING().getText());
         importFiles.add(filename);
     }
 
     @Override
     public void exitLibtagstmt(PuffinBasicParser.LibtagstmtContext ctx) {
-        var tag = unquote(ctx.tag.STRING().getText());
+        String tag = unquote(ctx.tag.STRING().getText());
         if (libtag == null) {
             libtag = tag;
         } else {

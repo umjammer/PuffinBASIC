@@ -96,7 +96,7 @@ public class STObjects {
 
             @Override
             public void copyArray(Collection<?> src, STValue dst) {
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.size());
                 dst.setArrayDimensions(dims);
                 int[] array = ((STInt32ArrayValue) dst).getValue();
@@ -109,7 +109,7 @@ public class STObjects {
             @Override
             public void copyArray(Object[] src, STValue dst) {
                 Integer[] srcList = (Integer[]) src;
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.length);
                 dst.setArrayDimensions(dims);
                 int[] array = ((STInt32ArrayValue) dst).getValue();
@@ -165,7 +165,7 @@ public class STObjects {
 
             @Override
             public void copyArray(Collection<?> src, STValue dst) {
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.size());
                 dst.setArrayDimensions(dims);
                 long[] array = ((STInt64ArrayValue) dst).getValue();
@@ -178,7 +178,7 @@ public class STObjects {
             @Override
             public void copyArray(Object[] src, STValue dst) {
                 Long[] srcList = (Long[]) src;
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.length);
                 dst.setArrayDimensions(dims);
                 long[] array = ((STInt64ArrayValue) dst).getValue();
@@ -234,7 +234,7 @@ public class STObjects {
 
             @Override
             public void copyArray(Collection<?> src, STValue dst) {
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.size());
                 dst.setArrayDimensions(dims);
                 float[] array = ((STFloat32ArrayValue) dst).getValue();
@@ -247,7 +247,7 @@ public class STObjects {
             @Override
             public void copyArray(Object[] src, STValue dst) {
                 Float[] srcList = (Float[]) src;
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.length);
                 dst.setArrayDimensions(dims);
                 float[] array = ((STFloat32ArrayValue) dst).getValue();
@@ -303,7 +303,7 @@ public class STObjects {
 
             @Override
             public void copyArray(Collection<?> src, STValue dst) {
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.size());
                 dst.setArrayDimensions(dims);
                 double[] array = ((STFloat64ArrayValue) dst).getValue();
@@ -316,7 +316,7 @@ public class STObjects {
             @Override
             public void copyArray(Object[] src, STValue dst) {
                 Double[] srcList = (Double[]) src;
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.length);
                 dst.setArrayDimensions(dims);
                 double[] array = ((STFloat64ArrayValue) dst).getValue();
@@ -379,7 +379,7 @@ public class STObjects {
 
             @Override
             public void copyArray(Collection<?> src, STValue dst) {
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.size());
                 dst.setArrayDimensions(dims);
                 String[] array = ((STStringArrayValue) dst).getValue();
@@ -392,7 +392,7 @@ public class STObjects {
             @Override
             public void copyArray(Object[] src, STValue dst) {
                 String[] srcList = (String[]) src;
-                var dims = new IntArrayList(1);
+                IntArrayList dims = new IntArrayList(1);
                 dims.add(src.length);
                 dst.setArrayDimensions(dims);
                 String[] array = ((STStringArrayValue) dst).getValue();
@@ -500,7 +500,7 @@ public class STObjects {
                         "Variable suffix: '" + repr + "' is null or length != 1"
                 );
             }
-            var dataType = mapping.get(repr.charAt(0));
+            PuffinBasicAtomTypeId dataType = mapping.get(repr.charAt(0));
             if (dataType == null) {
                 throw new PuffinBasicInternalError(
                         "Variable suffix '" + repr + "' is invalid"
@@ -640,8 +640,8 @@ public class STObjects {
 
         @Override
         public STValue newInstance(PuffinBasicSymbolTable symbolTable) {
-            var entry = atomType.createArrayEntry();
-            var value = entry.getValue();
+            STTmp entry = atomType.createArrayEntry();
+            STValue value = entry.getValue();
             if (dims != null) {
                 value.setArrayDimensions(dims);
             }
@@ -744,7 +744,7 @@ public class STObjects {
         }
 
         public int getMemberRefId(VariableName memberName) {
-            var memberRefId = nameToRefIdMap.getOrDefault(memberName, -1);
+            int memberRefId = nameToRefIdMap.getOrDefault(memberName, -1);
             if (memberRefId == -1) {
                 throw new PuffinBasicRuntimeError(
                         BAD_FIELD,
@@ -755,7 +755,7 @@ public class STObjects {
         }
 
         public void declareField(VariableName memberName, PuffinBasicType type) {
-            final int refId = counter++;
+            int refId = counter++;
             refIdToTypeMap.put(refId, type);
             nameToRefIdMap.put(memberName, refId);
         }
@@ -827,7 +827,7 @@ public class STObjects {
         }
 
         public MemberFunction get(String funcName) {
-            var mf = memberFunctions.get(funcName);
+            MemberFunction mf = memberFunctions.get(funcName);
             if (mf == null) {
                 throw new PuffinBasicRuntimeError(
                         BAD_FIELD,
@@ -872,7 +872,7 @@ public class STObjects {
                                     "append", new PuffinBasicType[] {type}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var list = (List<Object>) obj;
+                                        List<Object> list = (List<Object>) obj;
                                         if (type.getTypeId() == PuffinBasicTypeId.SCALAR) {
                                             list.add(type.getAtomTypeId().getValueFrom(params[0]));
                                         } else {
@@ -884,10 +884,10 @@ public class STObjects {
                                     "insert", new PuffinBasicType[] {ScalarType.INT32, type}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var list = (List<Object>) obj;
+                                        List<Object> list = (List<Object>) obj;
                                         int index = params[0].getInt32();
                                         if (type.getTypeId() == PuffinBasicTypeId.SCALAR) {
-                                            var value = type.getAtomTypeId().getValueFrom(params[1]);
+                                            Object value = type.getAtomTypeId().getValueFrom(params[1]);
                                             list.add(index, value);
                                         } else {
                                             list.add(index, params[1]);
@@ -898,7 +898,7 @@ public class STObjects {
                                     "get", new PuffinBasicType[] {ScalarType.INT32}, type,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var list = (List<Object>) obj;
+                                        List<Object> list = (List<Object>) obj;
                                         int index = params[0].getInt32();
                                         if (index < 0 || index >= list.size()) {
                                             throw new PuffinBasicRuntimeError(
@@ -925,7 +925,7 @@ public class STObjects {
                                     "values", new PuffinBasicType[] {}, valuesType,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var list = (List<Object>) obj;
+                                        List<Object> list = (List<Object>) obj;
                                         if (type.getTypeId() == PuffinBasicTypeId.SCALAR) {
                                             type.getAtomTypeId().copyArray(list, result);
                                         } else {
@@ -939,7 +939,7 @@ public class STObjects {
                                     "clear", new PuffinBasicType[] {}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var list = (List<Object>) obj;
+                                        List<Object> list = (List<Object>) obj;
                                         list.clear();
                                         result.setInt32(0);
                                     }))
@@ -1005,8 +1005,8 @@ public class STObjects {
                                     "add", new PuffinBasicType[] {type}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var set = (Set<Object>) obj;
-                                        var value = type.getAtomTypeId().getValueFrom(params[0]);
+                                        Set<Object> set = (Set<Object>) obj;
+                                        Object value = type.getAtomTypeId().getValueFrom(params[0]);
                                         set.add(value);
                                         result.setInt32(0);
                                     }))
@@ -1014,31 +1014,31 @@ public class STObjects {
                                     "remove", new PuffinBasicType[] {type}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var set = (Set<Object>) obj;
-                                        var value = type.getAtomTypeId().getValueFrom(params[0]);
-                                        var removeRes = set.remove(value);
+                                        Set<Object> set = (Set<Object>) obj;
+                                        Object value = type.getAtomTypeId().getValueFrom(params[0]);
+                                        boolean removeRes = set.remove(value);
                                         result.setInt32(removeRes ? -1 : 0);
                                     }))
                             .add(new MemberFunction(
                                     "contains", new PuffinBasicType[] {type}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var set = (Set<Object>) obj;
-                                        var value = type.getAtomTypeId().getValueFrom(params[0]);
+                                        Set<Object> set = (Set<Object>) obj;
+                                        Object value = type.getAtomTypeId().getValueFrom(params[0]);
                                         result.setInt32(set.contains(value) ? -1 : 0);
                                     }))
                             .add(new MemberFunction(
                                     "values", new PuffinBasicType[] {}, valuesType,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var set = (Set<Object>) obj;
+                                        Set<Object> set = (Set<Object>) obj;
                                         type.getAtomTypeId().copyArray(set, result);
                                     }))
                             .add(new MemberFunction(
                                     "clear", new PuffinBasicType[] {}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var set = (Set<Object>) obj;
+                                        Set<Object> set = (Set<Object>) obj;
                                         set.clear();
                                         result.setInt32(0);
                                     }))
@@ -1106,9 +1106,9 @@ public class STObjects {
                                     "put", new PuffinBasicType[] {keyType, valueType}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var dict = (Map<Object, Object>) obj;
-                                        var key = keyType.getAtomTypeId().getValueFrom(params[0]);
-                                        var value = valueType.getAtomTypeId().getValueFrom(params[1]);
+                                        Map<Object, Object> dict = (Map<Object, Object>) obj;
+                                        Object key = keyType.getAtomTypeId().getValueFrom(params[0]);
+                                        Object value = valueType.getAtomTypeId().getValueFrom(params[1]);
                                         dict.put(key, value);
                                         result.setInt32(0);
                                     }))
@@ -1116,41 +1116,41 @@ public class STObjects {
                                     "removeKey", new PuffinBasicType[] {keyType}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var dict = (Map<Object, Object>) obj;
-                                        var key = keyType.getAtomTypeId().getValueFrom(params[0]);
-                                        var removeRes = dict.remove(key);
+                                        Map<Object, Object> dict = (Map<Object, Object>) obj;
+                                        Object key = keyType.getAtomTypeId().getValueFrom(params[0]);
+                                        Object removeRes = dict.remove(key);
                                         result.setInt32(removeRes != null ? -1 : 0);
                                     }))
                             .add(new MemberFunction(
                                     "getOrDefault", new PuffinBasicType[] {keyType, valueType}, valueType,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var dict = (Map<Object, Object>) obj;
-                                        var key = keyType.getAtomTypeId().getValueFrom(params[0]);
-                                        var value = valueType.getAtomTypeId().getValueFrom(params[1]);
-                                        var getRes = dict.getOrDefault(key, value);
+                                        Map<Object, Object> dict = (Map<Object, Object>) obj;
+                                        Object key = keyType.getAtomTypeId().getValueFrom(params[0]);
+                                        Object value = valueType.getAtomTypeId().getValueFrom(params[1]);
+                                        Object getRes = dict.getOrDefault(key, value);
                                         valueType.getAtomTypeId().setValueIn(getRes, result);
                                     }))
                             .add(new MemberFunction(
                                     "containsKey", new PuffinBasicType[] {keyType}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var dict = (Map<Object, Object>) obj;
-                                        var key = keyType.getAtomTypeId().getValueFrom(params[0]);
+                                        Map<Object, Object> dict = (Map<Object, Object>) obj;
+                                        Object key = keyType.getAtomTypeId().getValueFrom(params[0]);
                                         result.setInt32(dict.containsKey(key) ? -1 : 0);
                                     }))
                             .add(new MemberFunction(
                                     "keys", new PuffinBasicType[] {}, valuesType,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var dict = (Map<Object, Object>) obj;
+                                        Map<Object, Object> dict = (Map<Object, Object>) obj;
                                         keyType.getAtomTypeId().copyArray(dict.keySet(), result);
                                     }))
                             .add(new MemberFunction(
                                     "clear", new PuffinBasicType[] {}, ScalarType.INT32,
                                     (obj, params, result) -> {
                                         @SuppressWarnings("unchecked")
-                                        var dict = (Map<Object, Object>) obj;
+                                        Map<Object, Object> dict = (Map<Object, Object>) obj;
                                         dict.clear();
                                         result.setInt32(0);
                                     }))
@@ -2160,105 +2160,105 @@ public class STObjects {
 
         @Override
         public String printFormat() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.printFormat();
         }
 
         @Override
         public String writeFormat() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.writeFormat();
         }
 
         @Override
         public void assign(STValue entry) {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             array.assign(entry);
         }
 
         @Override
         public int getInt32() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.getInt32();
         }
 
         @Override
         public long getInt64() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.getInt64();
         }
 
         @Override
         public float getFloat32() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.getFloat32();
         }
 
         @Override
         public double getFloat64() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.getFloat64();
         }
 
         @Override
         public int getRoundedInt32() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.getRoundedInt32();
         }
 
         @Override
         public long getRoundedInt64() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.getRoundedInt64();
         }
 
         @Override
         public String getString() {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             return array.getString();
         }
 
         @Override
         public void setInt32(int value) {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             array.setInt32(value);
         }
 
         @Override
         public void setInt64(long value) {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             array.setInt64(value);
         }
 
         @Override
         public void setFloat32(float value) {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             array.setFloat32(value);
         }
 
         @Override
         public void setFloat64(double value) {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             array.setFloat64(value);
         }
 
         @Override
         public void setString(String value) {
-            var array = getValue();
+            AbstractSTArrayValue array = getValue();
             array.setArrayIndexID(index1d);
             array.setString(value);
         }
@@ -2273,7 +2273,7 @@ public class STObjects {
 
         @Override
         public void replace(STValue entry) {
-            var from = (AbstractSTArrayValue) entry;
+            AbstractSTArrayValue from = (AbstractSTArrayValue) entry;
             dimensions = from.dimensions;
             totalLength = from.totalLength;
             ndim = from.ndim;
@@ -2346,7 +2346,7 @@ public class STObjects {
         @Override
         public void replace(STValue entry) {
             super.replace(entry);
-            var from = (STInt32ArrayValue) entry;
+            STInt32ArrayValue from = (STInt32ArrayValue) entry;
             value = from.value;
         }
 
@@ -2925,6 +2925,7 @@ public class STObjects {
             this.list = new ArrayList<>();
         }
 
+        @Override
         public void call(String funcName, STValue[] params, STValue result) {
             memberFunctions.get(funcName).callHandler.call(list, params, result);
         }
@@ -2998,10 +2999,10 @@ public class STObjects {
             super(PuffinBasicTypeId.STRUCT, PuffinBasicAtomTypeId.COMPOSITE);
             this.structType = type;
             this.memberRefIdToValueId = new Int2IntOpenHashMap();
-            for (var entry : structType.nameToRefIdMap.object2IntEntrySet()) {
-                var memberRefId = entry.getIntValue();
-                var valueType = structType.refIdToTypeMap.get(memberRefId);
-                var valueId = symbolTable.addTmp(valueType, e -> e.getValue().setInitialized());
+            for (Object2IntMap.Entry<VariableName> entry : structType.nameToRefIdMap.object2IntEntrySet()) {
+                int memberRefId = entry.getIntValue();
+                PuffinBasicType valueType = structType.refIdToTypeMap.get(memberRefId);
+                int valueId = symbolTable.addTmp(valueType, e -> e.getValue().setInitialized());
                 this.memberRefIdToValueId.put(memberRefId, valueId);
             }
         }

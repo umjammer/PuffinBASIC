@@ -1121,7 +1121,7 @@ allocating the variable.
 Syntax:
 
 ```
-AUTO refvar = expr
+AUTO refint = expr
 ```
 
 Example:

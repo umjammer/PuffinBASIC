@@ -24,7 +24,7 @@ public class PuffinBasicImportPath {
 
     private List<String> getSearchPaths() {
         List<String> searchPaths = new ArrayList<>();
-        var paths = System.getenv(PUFFIN_BASIC_PATH_ENVVAR);
+        String paths = System.getenv(PUFFIN_BASIC_PATH_ENVVAR);
         if (paths != null) {
             searchPaths.addAll(
                     Arrays.stream(paths.split(File.pathSeparator)).collect(Collectors.toList()));
@@ -35,7 +35,7 @@ public class PuffinBasicImportPath {
 
     public String find(String relativePath) {
         for (String searchPath : searchPaths) {
-            var file = Paths.get(searchPath, relativePath).toFile();
+            File file = Paths.get(searchPath, relativePath).toFile();
             if (file.exists()) {
                 return file.getPath();
             }

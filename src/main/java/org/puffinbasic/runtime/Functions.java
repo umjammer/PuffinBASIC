@@ -3,6 +3,7 @@ package org.puffinbasic.runtime;
 import com.google.common.base.Strings;
 import it.unimi.dsi.fastutil.doubles.Double2DoubleFunction;
 import org.puffinbasic.domain.PuffinBasicSymbolTable;
+import org.puffinbasic.domain.STObjects;
 import org.puffinbasic.domain.STObjects.PuffinBasicAtomTypeId;
 import org.puffinbasic.error.PuffinBasicInternalError;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
@@ -30,9 +31,9 @@ import static org.puffinbasic.error.PuffinBasicRuntimeError.ErrorCode.INDEX_OUT_
 public class Functions {
 
     public static void abs(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var op1Entry = symbolTable.get(instruction.op1);
-        var op1 = op1Entry.getValue();
-        var result = symbolTable.get(instruction.result).getValue();
+        STObjects.STEntry op1Entry = symbolTable.get(instruction.op1);
+        STObjects.STValue op1 = op1Entry.getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         switch (op1Entry.getType().getAtomTypeId()) {
             case INT32:
                 result.setInt32(Math.abs(op1.getInt32()));
@@ -52,14 +53,14 @@ public class Functions {
     }
 
     public static void asc(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var value = symbolTable.get(instruction.op1).getValue().getString();
+        String value = symbolTable.get(instruction.op1).getValue().getString();
         if (value == null || value.isEmpty()) {
             throw new PuffinBasicRuntimeError(
                     ILLEGAL_FUNCTION_PARAM,
                     "IllegalFunctionCall: null/empty string: '" + value + "'"
             );
         }
-        var ascii = (int) value.charAt(0);
+        int ascii = value.charAt(0);
         symbolTable.get(instruction.result).getValue().setInt32(ascii);
     }
 
@@ -144,20 +145,20 @@ public class Functions {
     }
 
     public static void e(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var result = symbolTable.get(instruction.result).getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         result.setFloat64(Math.E);
     }
 
     public static void pi(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var result = symbolTable.get(instruction.result).getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         result.setFloat64(Math.PI);
     }
 
     public static void min(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var v1 = symbolTable.get(instruction.op1).getValue();
-        var v2 = symbolTable.get(instruction.op2).getValue();
-        var resultEntry = symbolTable.get(instruction.result);
-        var result = resultEntry.getValue();
+        STObjects.STValue v1 = symbolTable.get(instruction.op1).getValue();
+        STObjects.STValue v2 = symbolTable.get(instruction.op2).getValue();
+        STObjects.STEntry resultEntry = symbolTable.get(instruction.result);
+        STObjects.STValue result = resultEntry.getValue();
 
         switch (resultEntry.getType().getAtomTypeId()) {
             case INT32:
@@ -178,10 +179,10 @@ public class Functions {
     }
 
     public static void max(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var v1 = symbolTable.get(instruction.op1).getValue();
-        var v2 = symbolTable.get(instruction.op2).getValue();
-        var resultEntry = symbolTable.get(instruction.result);
-        var result = resultEntry.getValue();
+        STObjects.STValue v1 = symbolTable.get(instruction.op1).getValue();
+        STObjects.STValue v2 = symbolTable.get(instruction.op2).getValue();
+        STObjects.STEntry resultEntry = symbolTable.get(instruction.result);
+        STObjects.STValue result = resultEntry.getValue();
 
         switch (resultEntry.getType().getAtomTypeId()) {
             case INT32:
@@ -206,13 +207,13 @@ public class Functions {
             Instruction instruction,
             Double2DoubleFunction function)
     {
-        var value = symbolTable.get(instruction.op1).getValue().getFloat64();
-        var result = symbolTable.get(instruction.result).getValue();
+        double value = symbolTable.get(instruction.op1).getValue().getFloat64();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         result.setFloat64(function.applyAsDouble(value));
     }
 
     public static void cint(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var entry = symbolTable.get(instruction.op1).getValue();
+        STObjects.STValue entry = symbolTable.get(instruction.op1).getValue();
         double value = entry.getFloat64();
         if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
             throw new PuffinBasicRuntimeError(
@@ -224,7 +225,7 @@ public class Functions {
     }
 
     public static void clng(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var entry = symbolTable.get(instruction.op1).getValue();
+        STObjects.STValue entry = symbolTable.get(instruction.op1).getValue();
         double value = entry.getFloat64();
         if (value < Long.MIN_VALUE || value > Long.MAX_VALUE) {
             throw new PuffinBasicRuntimeError(
@@ -249,7 +250,7 @@ public class Functions {
         int intValue = symbolTable.get(instruction.op1).getValue().getInt32();
         char charValue = (char) intValue;
         symbolTable.get(instruction.result).getValue().setString(
-                new String(new char[] {charValue}));
+                String.valueOf(charValue));
     }
 
     public static void mkidlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
@@ -335,8 +336,8 @@ public class Functions {
     }
 
     public static void val(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var str = symbolTable.get(instruction.op1).getValue().getString();
-        var result = symbolTable.get(instruction.result).getValue();
+        String str = symbolTable.get(instruction.op1).getValue().getString();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         try {
             result.setFloat64(Double.parseDouble(str));
         } catch (NumberFormatException e) {
@@ -348,9 +349,9 @@ public class Functions {
     }
 
     public static void fnint(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var vEntry = symbolTable.get(instruction.op1);
-        var v = vEntry.getValue();
-        var result = symbolTable.get(instruction.result).getValue();
+        STObjects.STEntry vEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue v = vEntry.getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         switch (vEntry.getType().getAtomTypeId()) {
             case INT32:
                 result.setInt32(v.getInt32());
@@ -370,9 +371,9 @@ public class Functions {
     }
 
     public static void fix(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var vEntry = symbolTable.get(instruction.op1);
-        var v = vEntry.getValue();
-        var result = symbolTable.get(instruction.result).getValue();
+        STObjects.STEntry vEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue v = vEntry.getValue();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         switch (vEntry.getType().getAtomTypeId()) {
             case INT32:
                 result.setInt32(v.getInt32());
@@ -392,9 +393,9 @@ public class Functions {
     }
 
     public static void len(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var stEntry = symbolTable.get(instruction.op1);
-        var value = stEntry.getValue();
-        final int len;
+        STObjects.STEntry stEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue value = stEntry.getValue();
+        int len;
         if (stEntry.getType().getTypeId() == ARRAY) {
             int axis = instruction.op2 != NULL_ID ? symbolTable.get(instruction.op2).getValue().getInt32() : 0;
             if (axis < 0 || axis >= value.getNumArrayDimensions()) {
@@ -414,10 +415,10 @@ public class Functions {
     }
 
     public static void strdlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var numericEntry = symbolTable.get(instruction.op1);
-        var numeric = numericEntry.getValue();
-        var dt = numericEntry.getType().getAtomTypeId();
-        final String str;
+        STObjects.STEntry numericEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue numeric = numericEntry.getValue();
+        PuffinBasicAtomTypeId dt = numericEntry.getType().getAtomTypeId();
+        String str;
         if (dt == INT32) {
             str = Integer.toString(numeric.getInt32());
         } else if (dt == INT64) {
@@ -431,10 +432,10 @@ public class Functions {
     }
 
     public static void hexdlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var numericEntry = symbolTable.get(instruction.op1);
-        var numeric = numericEntry.getValue();
-        var dt = numericEntry.getType().getAtomTypeId();
-        final String str;
+        STObjects.STEntry numericEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue numeric = numericEntry.getValue();
+        PuffinBasicAtomTypeId dt = numericEntry.getType().getAtomTypeId();
+        String str;
         if (dt == INT32) {
             str = Integer.toHexString(numeric.getInt32());
         } else if (dt == INT64) {
@@ -448,10 +449,10 @@ public class Functions {
     }
 
     public static void octdlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var numericEntry = symbolTable.get(instruction.op1);
-        var numeric = numericEntry.getValue();
-        var dt = numericEntry.getType().getAtomTypeId();
-        final String str;
+        STObjects.STEntry numericEntry = symbolTable.get(instruction.op1);
+        STObjects.STValue numeric = numericEntry.getValue();
+        PuffinBasicAtomTypeId dt = numericEntry.getType().getAtomTypeId();
+        String str;
         if (dt == INT32 || dt == FLOAT) {
             str = Integer.toOctalString(numeric.getInt32());
         } else {
@@ -461,8 +462,8 @@ public class Functions {
     }
 
     public static void leftdlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var x = symbolTable.get(instruction.op1).getValue().getString();
-        var n = symbolTable.get(instruction.op2).getValue().getInt32();
+        String x = symbolTable.get(instruction.op1).getValue().getString();
+        int n = symbolTable.get(instruction.op2).getValue().getInt32();
         String result;
         if (n < 0) {
             throw new PuffinBasicRuntimeError(
@@ -480,9 +481,9 @@ public class Functions {
     }
 
     public static void rightdlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var x = symbolTable.get(instruction.op1).getValue().getString();
-        var n = symbolTable.get(instruction.op2).getValue().getInt32();
-        var xlen = x.length();
+        String x = symbolTable.get(instruction.op1).getValue().getString();
+        int n = symbolTable.get(instruction.op2).getValue().getInt32();
+        int xlen = x.length();
         String result;
         if (n < 0) {
             throw new PuffinBasicRuntimeError(
@@ -503,11 +504,11 @@ public class Functions {
             PuffinBasicSymbolTable symbolTable,
             Instruction instr0,
             Instruction instr) {
-        var x = symbolTable.get(instr0.op1).getValue().getString();
-        var y = symbolTable.get(instr0.op2).getValue().getString();
-        var n = symbolTable.get(instr.op1).getValue().getInt32();
-        var xlen = x.length();
-        var ylen = y.length();
+        String x = symbolTable.get(instr0.op1).getValue().getString();
+        String y = symbolTable.get(instr0.op2).getValue().getString();
+        int n = symbolTable.get(instr.op1).getValue().getInt32();
+        int xlen = x.length();
+        int ylen = y.length();
         int result;
         if (n <= 0) {
             throw new PuffinBasicRuntimeError(
@@ -528,10 +529,10 @@ public class Functions {
             PuffinBasicSymbolTable symbolTable,
             Instruction instr0,
             Instruction instr) {
-        var x = symbolTable.get(instr0.op1).getValue().getString();
-        var n = symbolTable.get(instr0.op2).getValue().getInt32();
-        var m = symbolTable.get(instr.op1).getValue().getInt32();
-        var xlen = x.length();
+        String x = symbolTable.get(instr0.op1).getValue().getString();
+        int n = symbolTable.get(instr0.op2).getValue().getInt32();
+        int m = symbolTable.get(instr.op1).getValue().getInt32();
+        int xlen = x.length();
         String result;
         if (n <= 0) {
             throw new PuffinBasicRuntimeError(
@@ -551,9 +552,9 @@ public class Functions {
     }
 
     public static void sgn(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var entry = symbolTable.get(instruction.op1);
-        var numeric = entry.getValue();
-        var dt = entry.getType().getAtomTypeId();
+        STObjects.STEntry entry = symbolTable.get(instruction.op1);
+        STObjects.STValue numeric = entry.getValue();
+        PuffinBasicAtomTypeId dt = entry.getType().getAtomTypeId();
         int result;
         if (dt == INT32) {
             result = Integer.compare(numeric.getInt32(), 0);
@@ -573,25 +574,25 @@ public class Functions {
     }
 
     public static void timer(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var nowZoned = ZonedDateTime.now();
-        var midnight = nowZoned.toLocalDate().atStartOfDay(nowZoned.getZone()).toInstant();
-        var duration = Duration.between(midnight, Instant.now());
-        var seconds = duration.getSeconds() + duration.getNano() / 1000_000_000.0;
+        ZonedDateTime nowZoned = ZonedDateTime.now();
+        Instant midnight = nowZoned.toLocalDate().atStartOfDay(nowZoned.getZone()).toInstant();
+        Duration duration = Duration.between(midnight, Instant.now());
+        double seconds = duration.getSeconds() + duration.getNano() / 1000_000_000.0;
         symbolTable.get(instruction.result).getValue().setFloat64(seconds);
     }
 
     public static void timerMillis(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var nowZoned = ZonedDateTime.now();
-        var midnight = nowZoned.toLocalDate().atStartOfDay(nowZoned.getZone()).toInstant();
-        var duration = Duration.between(midnight, Instant.now());
-        var millis = TimeUnit.SECONDS.toMillis(duration.getSeconds()) + TimeUnit.NANOSECONDS.toMillis(duration.getNano());
+        ZonedDateTime nowZoned = ZonedDateTime.now();
+        Instant midnight = nowZoned.toLocalDate().atStartOfDay(nowZoned.getZone()).toInstant();
+        Duration duration = Duration.between(midnight, Instant.now());
+        long millis = TimeUnit.SECONDS.toMillis(duration.getSeconds()) + TimeUnit.NANOSECONDS.toMillis(duration.getNano());
         symbolTable.get(instruction.result).getValue().setInt64(millis);
     }
 
     public static void stringdlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var n = symbolTable.get(instruction.op1).getValue().getInt32();
-        var jOrxdlrEntry = symbolTable.get(instruction.op2);
-        var jOrxdlr = jOrxdlrEntry.getValue();
+        int n = symbolTable.get(instruction.op1).getValue().getInt32();
+        STObjects.STEntry jOrxdlrEntry = symbolTable.get(instruction.op2);
+        STObjects.STValue jOrxdlr = jOrxdlrEntry.getValue();
         String c;
         if (jOrxdlrEntry.getType().getAtomTypeId() == STRING) {
             if (jOrxdlr.getString().isEmpty()) {
@@ -630,8 +631,8 @@ public class Functions {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var fileNumber = symbolTable.get(instruction.op1).getValue().getInt32();
-        var loc = files.get(fileNumber).getCurrentRecordNumber();
+        int fileNumber = symbolTable.get(instruction.op1).getValue().getInt32();
+        int loc = files.get(fileNumber).getCurrentRecordNumber();
         symbolTable.get(instruction.result).getValue().setInt32(loc);
     }
 
@@ -640,8 +641,8 @@ public class Functions {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var fileNumber = symbolTable.get(instruction.op1).getValue().getInt32();
-        var lof = files.get(fileNumber).getFileSizeInBytes();
+        int fileNumber = symbolTable.get(instruction.op1).getValue().getInt32();
+        long lof = files.get(fileNumber).getFileSizeInBytes();
         symbolTable.get(instruction.result).getValue().setInt64(lof);
     }
 
@@ -650,8 +651,8 @@ public class Functions {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var fileNumber = symbolTable.get(instruction.op1).getValue().getInt32();
-        var eof = files.get(fileNumber).eof();
+        int fileNumber = symbolTable.get(instruction.op1).getValue().getInt32();
+        boolean eof = files.get(fileNumber).eof();
         symbolTable.get(instruction.result).getValue().setInt32(eof ? -1 : 0);
     }
 
@@ -660,8 +661,8 @@ public class Functions {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var x = symbolTable.get(instruction.op1).getValue().getInt32();
-        var fileNumber = symbolTable.get(instruction.op2).getValue().getInt32();
+        int x = symbolTable.get(instruction.op1).getValue().getInt32();
+        int fileNumber = symbolTable.get(instruction.op2).getValue().getInt32();
 
         byte[] read;
         if (fileNumber < 0) {
@@ -677,14 +678,14 @@ public class Functions {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var envvar = symbolTable.get(instruction.op1).getValue().getString();
-        var result = env.get(envvar);
+        String envvar = symbolTable.get(instruction.op1).getValue().getString();
+        String result = env.get(envvar);
         symbolTable.get(instruction.result).getValue().setString(result);
     }
 
     static void splitdlr(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var str = symbolTable.get(instruction.op1).getValue().getString();
-        var regex = symbolTable.get(instruction.op2).getValue().getString();
+        String str = symbolTable.get(instruction.op1).getValue().getString();
+        String regex = symbolTable.get(instruction.op2).getValue().getString();
         String[] tokens = str.split(regex);
         STRING.copyArray(tokens, symbolTable.get(instruction.result).getValue());
     }

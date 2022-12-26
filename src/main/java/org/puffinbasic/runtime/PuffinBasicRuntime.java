@@ -53,7 +53,7 @@ public class PuffinBasicRuntime {
     private Int2IntMap computeLabelToInstructionNumber(List<Instruction> instructions) {
         Int2IntMap labelToInstrNum = new Int2IntOpenHashMap();
         for (int i = 0; i < instructions.size(); i++) {
-            var instr = instructions.get(i);
+            Instruction instr = instructions.get(i);
             if (instr.opCode == LABEL) {
                 labelToInstrNum.put(instr.op1, i);
             }
@@ -62,7 +62,7 @@ public class PuffinBasicRuntime {
     }
 
     private int getInstrNumForLabel(int id) {
-        var instrNum = labelToInstrNum.getOrDefault(id, -1);
+        int instrNum = labelToInstrNum.getOrDefault(id, -1);
         if (instrNum == -1) {
             throw new PuffinBasicInternalError("Failed to find instruction# for label: " + id);
         }
@@ -70,9 +70,9 @@ public class PuffinBasicRuntime {
     }
 
     private Int2IntMap computeLineNumberToInstructionNumber(List<Instruction> instructions) {
-        var linenumToInstrNum = new Int2IntOpenHashMap();
+        Int2IntOpenHashMap linenumToInstrNum = new Int2IntOpenHashMap();
         int instrNum = 0;
-        for (var instruction : instructions) {
+        for (Instruction instruction : instructions) {
             int lineNumber = instruction.getInputRef().lineNumber;
             if (lineNumber >= 0) {
                 linenumToInstrNum.putIfAbsent(lineNumber, instrNum);
@@ -83,7 +83,7 @@ public class PuffinBasicRuntime {
     }
 
     private int getInstrNumForLineNumber(int lineNumber) {
-        var instrNum = lineNumToInstrNum.getOrDefault(lineNumber, -1);
+        int instrNum = lineNumToInstrNum.getOrDefault(lineNumber, -1);
         if (instrNum == -1) {
             throw new PuffinBasicInternalError("Failed to find instruction# for line#: " + lineNumber);
         }
@@ -91,7 +91,7 @@ public class PuffinBasicRuntime {
     }
 
     public void run() {
-        var instructions = ir.getInstructions();
+        List<Instruction> instructions = ir.getInstructions();
         this.labelToInstrNum = computeLabelToInstructionNumber(instructions);
         this.lineNumToInstrNum = computeLineNumberToInstructionNumber(instructions);
         this.printBuffer = new PrintBuffer();
@@ -106,10 +106,10 @@ public class PuffinBasicRuntime {
         this.soundState = new SoundState();
 
         try {
-            var numInstructions = instructions.size();
+            int numInstructions = instructions.size();
             boolean end = false;
             while (!end && programCounter < numInstructions) {
-                var instruction = instructions.get(programCounter);
+                Instruction instruction = instructions.get(programCounter);
                 try {
                     end = runInstruction(instruction);
                 } catch (PuffinBasicRuntimeError e) {
@@ -218,7 +218,7 @@ public class PuffinBasicRuntime {
             case LABEL:
                 break;
             case GOTO_LINENUM: {
-                var lineNumber = ir.getSymbolTable().get(instruction.op1).getValue().getInt32();
+                int lineNumber = ir.getSymbolTable().get(instruction.op1).getValue().getInt32();
                 nextProgramCounter = getInstrNumForLineNumber(lineNumber);
             }
                 break;
@@ -249,7 +249,7 @@ public class PuffinBasicRuntime {
                 } else {
                     // Ignore label because we need to return to the lineNumber
                     gosubReturnLabelStack.popInt();
-                    var lineNumber = ir.getSymbolTable().get(instruction.op1).getValue().getInt32();
+                    int lineNumber = ir.getSymbolTable().get(instruction.op1).getValue().getInt32();
                     nextProgramCounter = getInstrNumForLineNumber(lineNumber);
                 }
             }

@@ -68,7 +68,7 @@ public class PuffinBasicSymbolTable {
     }
 
     private Optional<Scope> findScope(Predicate<Scope> predicate) {
-        var scope = getCurrentScope();
+        Scope scope = getCurrentScope();
         while (scope != null) {
             if (predicate.test(scope)) {
                 return Optional.of(scope);
@@ -80,8 +80,8 @@ public class PuffinBasicSymbolTable {
     }
 
     private STEntry getEntry(int id) {
-        var scope = getCurrentScope();
-        var entry = scope.getNullableEntry(id);
+        Scope scope = getCurrentScope();
+        STEntry entry = scope.getNullableEntry(id);
         if (entry != null) {
             return entry;
         } else {
@@ -113,7 +113,7 @@ public class PuffinBasicSymbolTable {
     }
 
     public int getCompositeVariableIdForVariable(VariableName variableName) {
-        var scope = findScope(s -> s.containsVariable(variableName)).orElse(getCurrentScope());
+        Scope scope = findScope(s -> s.containsVariable(variableName)).orElse(getCurrentScope());
         int id = scope.getIdForVariable(variableName);
         if (id == -1) {
             throw new PuffinBasicInternalError("Failed to find variable: " + variableName);
@@ -122,7 +122,7 @@ public class PuffinBasicSymbolTable {
     }
 
     public STEntry getVariable(int id) {
-        var entry = get(id);
+        STEntry entry = get(id);
         if (!entry.isLValue()) {
             throw new PuffinBasicRuntimeError(
                     ILLEGAL_FUNCTION_PARAM,
@@ -137,13 +137,13 @@ public class PuffinBasicSymbolTable {
             Function<VariableName, Variable> variableCreator,
             VariableConsumer consumer)
     {
-        var scope = findScope(s -> s.containsVariable(variableName)).orElse(getCurrentScope());
+        Scope scope = findScope(s -> s.containsVariable(variableName)).orElse(getCurrentScope());
         int id = scope.getIdForVariable(variableName);
-        final STVariable entry;
+        STVariable entry;
         if (id == -1) {
             id = generateNextId();
             scope.putVariable(variableName, id);
-            var variable = variableCreator.apply(variableName);
+            Variable variable = variableCreator.apply(variableName);
             entry = variableName.getDataType().createVariableEntry(variable);
             scope.putEntry(id, entry);
         } else {
@@ -157,7 +157,7 @@ public class PuffinBasicSymbolTable {
             VariableName variableName,
             STVariable variable)
     {
-        var scope = findScope(s -> s.containsVariable(variableName)).orElse(getCurrentScope());
+        Scope scope = findScope(s -> s.containsVariable(variableName)).orElse(getCurrentScope());
         int id = generateNextId();
         scope.putVariable(variableName, id);
         scope.putEntry(id, variable);
@@ -165,7 +165,7 @@ public class PuffinBasicSymbolTable {
     }
 
     public int addLabel(String label) {
-        var id = labelNameToId.getOrDefault(label, -1);
+        int id = labelNameToId.getOrDefault(label, -1);
         if (id == -1) {
             id = addLabel();
             labelNameToId.put(label, id);
@@ -174,33 +174,33 @@ public class PuffinBasicSymbolTable {
     }
 
     public int addLabel() {
-        var scope = getCurrentScope();
-        var id = generateNextId();
-        var entry = new STObjects.STLabel();
+        Scope scope = getCurrentScope();
+        int id = generateNextId();
+        STObjects.STLabel entry = new STObjects.STLabel();
         scope.putEntry(id, entry);
         return id;
     }
 
     public int addGotoTarget() {
-        var scope = getCurrentScope();
+        Scope scope = getCurrentScope();
         int id = generateNextId();
-        var entry = PuffinBasicAtomTypeId.INT32.createTmpEntry();
+        STTmp entry = PuffinBasicAtomTypeId.INT32.createTmpEntry();
         scope.putEntry(id, entry);
         return id;
     }
 
     public int addArrayReference(STLValue lvalue) {
-        var ref = new ArrayReferenceValue(lvalue);
+        STObjects.STValue ref = new ArrayReferenceValue(lvalue);
         int id = generateNextId();
-        var entry = new STLValue(ref, lvalue.getType());
+        STEntry entry = new STLValue(ref, lvalue.getType());
         getCurrentScope().putEntry(id, entry);
         return id;
     }
 
     public int addTmp(PuffinBasicType type, Consumer<STEntry> consumer) {
-        var scope = getCurrentScope();
+        Scope scope = getCurrentScope();
         int id = generateNextId();
-        var entry = type.canBeLValue() ? new STLValue(null, type) : new STTmp(null, type);
+        STObjects.AbstractSTEntry entry = type.canBeLValue() ? new STLValue(null, type) : new STTmp(null, type);
         entry.createAndSetInstance(this);
         scope.putEntry(id, entry);
         consumer.accept(entry);
@@ -208,32 +208,32 @@ public class PuffinBasicSymbolTable {
     }
 
     public int addTmp(PuffinBasicAtomTypeId dataType, Consumer<STEntry> consumer) {
-        var scope = getCurrentScope();
+        Scope scope = getCurrentScope();
         int id = generateNextId();
-        var entry = dataType.createTmpEntry();
+        STTmp entry = dataType.createTmpEntry();
         scope.putEntry(id, entry);
         consumer.accept(entry);
         return id;
     }
 
     public int addRef(PuffinBasicType type) {
-        var scope = getCurrentScope();
+        Scope scope = getCurrentScope();
         int id = generateNextId();
-        var entry = new STRef(type);
+        STRef entry = new STRef(type);
         scope.putEntry(id, entry);
         return id;
     }
 
     public int addTmpCompatibleWith(int srcId) {
-        var scope = getCurrentScope();
-        var dataType = scope.getEntry(srcId).getType().getAtomTypeId();
+        Scope scope = getCurrentScope();
+        PuffinBasicAtomTypeId dataType = scope.getEntry(srcId).getType().getAtomTypeId();
         int id = generateNextId();
         scope.putEntry(id, dataType.createTmpEntry());
         return id;
     }
 
     public PuffinBasicAtomTypeId getDataTypeFor(String varname, String suffix) {
-        var scope = getCurrentScope();
+        Scope scope = getCurrentScope();
         if (scope.containsVariable(new VariableName(varname, null, COMPOSITE))) {
             return COMPOSITE;
         }
@@ -241,7 +241,7 @@ public class PuffinBasicSymbolTable {
             throw new PuffinBasicInternalError("Empty variable name: " + varname);
         }
         if (suffix == null) {
-            var firstChar = varname.charAt(0);
+            char firstChar = varname.charAt(0);
             return defaultDataTypes.getOrDefault(firstChar, DOUBLE);
         } else {
             return PuffinBasicAtomTypeId.lookup(suffix);
@@ -266,7 +266,7 @@ public class PuffinBasicSymbolTable {
     }
 
     public StructType getStructType(String name) {
-        var type = userDefinedTypes.get(name);
+        StructType type = userDefinedTypes.get(name);
         if (type == null) {
             throw new PuffinBasicRuntimeError(
                     MISSING_STRUCT,
@@ -281,7 +281,7 @@ public class PuffinBasicSymbolTable {
     }
 
     public void pushRuntimeScope(int funcId, int callerInstrId) {
-        var funcDeclScope = getCurrentScope().getChild(funcId);
+        Scope funcDeclScope = getCurrentScope().getChild(funcId);
         if (funcDeclScope == null) {
             throw new PuffinBasicInternalError("Failed to find scope for id: " + funcId);
         }
@@ -289,7 +289,7 @@ public class PuffinBasicSymbolTable {
     }
 
     public void popScope() {
-        var parent = getCurrentScope().getParent();
+        Scope parent = getCurrentScope().getParent();
         if (parent == null) {
             throw new PuffinBasicInternalError("Scope underflow!");
         }

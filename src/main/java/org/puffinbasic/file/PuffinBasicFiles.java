@@ -41,7 +41,7 @@ public class PuffinBasicFiles {
             file = new PuffinBasicSequentialAccessOutputFile(filename, true);
         }
 
-        var existing = files.get(fileNumber);
+        PuffinBasicFile existing = files.get(fileNumber);
         if (existing != null && existing.isOpen()) {
             throw new PuffinBasicRuntimeError(
                     ILLEGAL_FILE_ACCESS,
@@ -66,7 +66,7 @@ public class PuffinBasicFiles {
 
     public PuffinBasicFile get(int fileNumber) {
         assertPositiveFileNumber(fileNumber);
-        var file = files.get(fileNumber);
+        PuffinBasicFile file = files.get(fileNumber);
         if (file == null) {
             throw new PuffinBasicRuntimeError(
                     ILLEGAL_FILE_ACCESS,
@@ -77,7 +77,7 @@ public class PuffinBasicFiles {
     }
 
     public void closeAll() {
-        for (var file : files.values()) {
+        for (PuffinBasicFile file : files.values()) {
             if (file.isOpen()) {
                 file.close();
             }

@@ -130,7 +130,7 @@ public class Formatter {
             this.shouldFill = numToFill > 0;
 
             if (numToFill > 0) {
-                var b = new byte[numToFill];
+                byte[] b = new byte[numToFill];
                 Arrays.fill(b, 0, numToFill, (byte) '0');
                 format = new String(b) + format;
             }
@@ -188,11 +188,11 @@ public class Formatter {
 
             // If ** or **$ is set, replace leading 0s with *s.
             // If ** or **$ is not set, remove leading 0s.
-            var dest = new byte[result.length()];
+            byte[] dest = new byte[result.length()];
             boolean checkForLeadingZero = true;
             int fillToLoc = -1;
             for (int i = 0; i < result.length(); i++) {
-                var c = result.charAt(i);
+                char c = result.charAt(i);
                 if ((c >= '1' && c <= '9')) {
                     checkForLeadingZero = false;
                 }
@@ -241,7 +241,7 @@ public class Formatter {
         @Override
         public String format(Object o) {
             if (o instanceof String) {
-                var str = (String) o;
+                String str = (String) o;
                 return str.isEmpty() ? "" : str.substring(0, 1);
             } else {
                 throw new PuffinBasicInternalError(
@@ -268,7 +268,7 @@ public class Formatter {
         public NSpacesFormatter(String format) {
             if (format.length() >= 2) {
                 length = format.length();
-                var spaces = format.substring(1, format.length() - 1);
+                String spaces = format.substring(1, format.length() - 1);
                 for (int i = 0; i < spaces.length(); i++) {
                     if (spaces.charAt(i) != ' ') {
                         throw new PuffinBasicRuntimeError(
@@ -288,8 +288,8 @@ public class Formatter {
         @Override
         public String format(Object o) {
             if (o instanceof String) {
-                var str = (String) o;
-                var strlen = str.length();
+                String str = (String) o;
+                int strlen = str.length();
                 if (strlen > this.length) {
                     return str.substring(0, this.length);
                 } else {

@@ -31,7 +31,6 @@ import org.puffinbasic.domain.Variable.VariableKindHint;
 import org.puffinbasic.domain.Variable.VariableName;
 import org.puffinbasic.error.PuffinBasicInternalError;
 import org.puffinbasic.error.PuffinBasicSemanticError;
-import org.puffinbasic.error.PuffinBasicSyntaxError;
 import org.puffinbasic.file.PuffinBasicFile.FileAccessMode;
 import org.puffinbasic.file.PuffinBasicFile.FileOpenMode;
 import org.puffinbasic.file.PuffinBasicFile.LockMode;
@@ -130,7 +129,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private Instruction lookupInstruction(ParserRuleContext ctx) {
-        var exprInstruction = nodeToInstruction.get(ctx);
+        Instruction exprInstruction = nodeToInstruction.get(ctx);
         if (exprInstruction == null) {
             throw new PuffinBasicInternalError(
                     "Failed to find instruction for node: " + ctx.getText()
@@ -152,18 +151,18 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitNumber(PuffinBasicParser.NumberContext ctx) {
-        final int id;
+        int id;
         if (ctx.integer() != null) {
-            final boolean isLong = ctx.integer().AT() != null;
-            final boolean isDouble = ctx.integer().HASH() != null;
-            final boolean isFloat = ctx.integer().EXCLAMATION() != null;
-            final String strValue;
-            final int base;
+            boolean isLong = ctx.integer().AT() != null;
+            boolean isDouble = ctx.integer().HASH() != null;
+            boolean isFloat = ctx.integer().EXCLAMATION() != null;
+            String strValue;
+            int base;
             if (ctx.integer().HEXADECIMAL() != null) {
                 strValue = ctx.integer().HEXADECIMAL().getText().substring(2);
                 base = 16;
             } else if (ctx.integer().OCTAL() != null) {
-                var octalStr = ctx.integer().OCTAL().getText();
+                String octalStr = ctx.integer().OCTAL().getText();
                 strValue = (octalStr.startsWith("&O") ? octalStr.substring(2) : octalStr.substring(1));
                 base = 8;
             } else {
@@ -179,24 +178,24 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                         entry -> entry.getValue().setInt32(Numbers.parseInt32(strValue, base, () -> getCtxString(ctx))));
             }
         } else if (ctx.FLOAT() != null) {
-            var floatStr = ctx.FLOAT().getText();
+            String floatStr = ctx.FLOAT().getText();
             if (floatStr.endsWith("!")) {
                 floatStr = floatStr.substring(0, floatStr.length() - 1);
             }
-            var floatValue = Numbers.parseFloat32(floatStr, () -> getCtxString(ctx));
+            float floatValue = Numbers.parseFloat32(floatStr, () -> getCtxString(ctx));
             id = ir.getSymbolTable().addTmp(FLOAT,
                     entry -> entry.getValue().setFloat32(floatValue));
         } else {
-            var doubleStr = ctx.DOUBLE().getText();
+            String doubleStr = ctx.DOUBLE().getText();
             if (doubleStr.endsWith("#")) {
                 doubleStr = doubleStr.substring(0, doubleStr.length() - 1);
             }
-            var doubleValue = Numbers.parseFloat64(doubleStr, () -> getCtxString(ctx));
+            double doubleValue = Numbers.parseFloat64(doubleStr, () -> getCtxString(ctx));
             id = ir.getSymbolTable().addTmp(DOUBLE,
                     entry -> entry.getValue().setFloat64(doubleValue));
         }
 
-        var instr = ir.addInstruction(
+        Instruction instr = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.VALUE, id, NULL_ID, id
         );
@@ -205,7 +204,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitVariable(VariableContext ctx) {
-        final Instruction instruction = ctx.leafvariable() != null
+        Instruction instruction = ctx.leafvariable() != null
             ? exitLeafVariable(ctx.leafvariable())
             : exitStructVariable(ctx.structvariable());
         nodeToInstruction.put(ctx, instruction);
@@ -214,8 +213,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     private Instruction exitLeafVariable(PuffinBasicParser.LeafvariableContext ctx) {
 
         ir.getSymbolTable().checkUnused(ctx.varname().VARNAME().getText());
-        var variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
-        var idHolder = new AtomicInteger();
+        VariableName variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
+        AtomicInteger idHolder = new AtomicInteger();
 
         ir.getSymbolTable().addVariableOrUDF(
                 variableName,
@@ -238,14 +237,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                                     OpCode.RESET_ARRAY_IDX,
                                     varId, NULL_ID, NULL_ID);
 
-                            for (var exprCtx : ctx.expr()) {
-                                var exprInstr = lookupInstruction(exprCtx);
+                            for (PuffinBasicParser.ExprContext exprCtx : ctx.expr()) {
+                                Instruction exprInstr = lookupInstruction(exprCtx);
                                 ir.addInstruction(
                                         sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                                         OpCode.SET_ARRAY_IDX,
                                         varId, exprInstr.result, NULL_ID);
                             }
-                            var refId = ir.getSymbolTable().addArrayReference(varEntry);
+                            int refId = ir.getSymbolTable().addArrayReference(varEntry);
                             ir.addInstruction(
                                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                                     OpCode.ARRAYREF,
@@ -254,11 +253,11 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                         }
                     } else if (variable.isUDF()) {
                         // UDF
-                        var udfEntry = (STUDF) varEntry;
-                        var udfState = udfStateMap.get(variable);
+                        STUDF udfEntry = (STUDF) varEntry;
+                        UDFState udfState = udfStateMap.get(variable);
 
                         // Create & Push Runtime scope
-                        var pushScopeInstr =
+                        Instruction pushScopeInstr =
                                 ir.addInstruction(
                                         sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                                         OpCode.PUSH_RT_SCOPE,
@@ -275,9 +274,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                                             + ctx.expr().size());
                         }
                         int i = 0;
-                        for (var exprCtx : ctx.expr()) {
-                            var exprInstr = lookupInstruction(exprCtx);
-                            var declParamId = udfEntry.getDeclaredParam(i++);
+                        for (PuffinBasicParser.ExprContext exprCtx : ctx.expr()) {
+                            Instruction exprInstr = lookupInstruction(exprCtx);
+                            int declParamId = udfEntry.getDeclaredParam(i++);
                             ir.addInstruction(
                                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                                     OpCode.PARAM_COPY,
@@ -289,7 +288,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                                 OpCode.GOTO_LABEL,
                                 udfState.labelFuncStart.op1, NULL_ID, NULL_ID);
                         // LABEL caller return address
-                        var labelCallerReturn =
+                        Instruction labelCallerReturn =
                                 ir.addInstruction(
                                         sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                                         OpCode.LABEL,
@@ -304,7 +303,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                     }
                 });
 
-        var refId = idHolder.get();
+        int refId = idHolder.get();
         return ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.VARIABLE, refId, NULL_ID, refId
@@ -312,18 +311,18 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private Instruction exitStructVariable(PuffinBasicParser.StructvariableContext ctx) {
-        var root = ctx.varname(0).VARNAME().getText();
-        var rootId = ir.getSymbolTable().getCompositeVariableIdForVariable(
+        String root = ctx.varname(0).VARNAME().getText();
+        int rootId = ir.getSymbolTable().getCompositeVariableIdForVariable(
                 new VariableName(root, null, COMPOSITE));
-        var structType = ir.getSymbolTable().get(rootId).getType().asStruct();
+        STObjects.StructType structType = ir.getSymbolTable().get(rootId).getType().asStruct();
 
-        var parentTypeName = structType.getTypeName();
+        String parentTypeName = structType.getTypeName();
         for (int i = 1; i < ctx.varname().size(); i++) {
-            var struct = ir.getSymbolTable().getStructType(parentTypeName);
-            var childVarname = ctx.varname(i).VARNAME().getText();
-            var childName = new VariableName(childVarname, null, COMPOSITE);
-            var childRefId = struct.getMemberRefId(childName);
-            var childTypeName = struct.getMemberType(childName).asStruct().getTypeName();
+            STObjects.StructType struct = ir.getSymbolTable().getStructType(parentTypeName);
+            String childVarname = ctx.varname(i).VARNAME().getText();
+            VariableName childName = new VariableName(childVarname, null, COMPOSITE);
+            int childRefId = struct.getMemberRefId(childName);
+            String childTypeName = struct.getMemberType(childName).asStruct().getTypeName();
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.PARAM1,
@@ -332,16 +331,16 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             parentTypeName = childTypeName;
         }
 
-        var struct = ir.getSymbolTable().getStructType(parentTypeName);
-        var leafCtx = ctx.leafvariable();
-        var leafVarname = leafCtx.varname().VARNAME().getText();
-        var leafDataType = struct.containsMember(new VariableName(leafVarname, null, COMPOSITE))
+        STObjects.StructType struct = ir.getSymbolTable().getStructType(parentTypeName);
+        PuffinBasicParser.LeafvariableContext leafCtx = ctx.leafvariable();
+        String leafVarname = leafCtx.varname().VARNAME().getText();
+        PuffinBasicAtomTypeId leafDataType = struct.containsMember(new VariableName(leafVarname, null, COMPOSITE))
             ? struct.getMemberType(new VariableName(leafVarname, null, COMPOSITE)).getAtomTypeId()
             : ir.getSymbolTable().getDataTypeFor(leafVarname,
                 leafCtx.varsuffix() != null ? leafCtx.varsuffix().getText() : null);
-        var leafName = new VariableName(leafVarname, leafDataType.getRepr(), leafDataType);
-        var leafRefId = struct.getMemberRefId(leafName);
-        var leafType = struct.getMemberType(leafName);
+        VariableName leafName = new VariableName(leafVarname, leafDataType.getRepr(), leafDataType);
+        int leafRefId = struct.getMemberRefId(leafName);
+        PuffinBasicType leafType = struct.getMemberType(leafName);
 
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -349,7 +348,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(leafRefId)),
                 NULL_ID, NULL_ID);
 
-        var result = ir.addInstruction(
+        Instruction result = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.STRUCT_LVALUE,
                 rootId, NULL_ID,
@@ -361,14 +360,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                     OpCode.RESET_ARRAY_IDX,
                     result.result, NULL_ID, NULL_ID);
 
-            for (var exprCtx : ctx.expr()) {
-                var exprInstr = lookupInstruction(exprCtx);
+            for (PuffinBasicParser.ExprContext exprCtx : ctx.expr()) {
+                Instruction exprInstr = lookupInstruction(exprCtx);
                 ir.addInstruction(
                         sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                         OpCode.SET_ARRAY_IDX,
                         result.result, exprInstr.result, NULL_ID);
             }
-            var refId = ir.getSymbolTable().addArrayReference(
+            int refId = ir.getSymbolTable().addArrayReference(
                     (STObjects.STLValue) ir.getSymbolTable().get(result.result));
             result = ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -385,7 +384,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     private void copyAndRegisterExprResult(ParserRuleContext ctx, Instruction instruction, boolean shouldCopy) {
         if (shouldCopy) {
-            var copy = ir.getSymbolTable().addTmpCompatibleWith(instruction.result);
+            int copy = ir.getSymbolTable().addTmpCompatibleWith(instruction.result);
             instruction = ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.COPY, instruction.result, copy, copy
@@ -396,8 +395,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprVariable(PuffinBasicParser.ExprVariableContext ctx) {
-        var instruction = nodeToInstruction.get(ctx.variable());
-        var varEntry = ir.getSymbolTable().get(instruction.result);
+        Instruction instruction = nodeToInstruction.get(ctx.variable());
+        STEntry varEntry = ir.getSymbolTable().get(instruction.result);
         boolean copy = (varEntry instanceof STVariable) && ((STVariable) varEntry).getVariable().isUDF();
         if (ctx.MINUS() != null) {
             if (ir.getSymbolTable().get(instruction.result).getType().getAtomTypeId() == STRING) {
@@ -424,7 +423,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprNumber(PuffinBasicParser.ExprNumberContext ctx) {
-        var instruction = nodeToInstruction.get(ctx.number());
+        Instruction instruction = nodeToInstruction.get(ctx.number());
         if (ctx.MINUS() != null) {
             instruction = ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -437,7 +436,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprFunc(PuffinBasicParser.ExprFuncContext ctx) {
-        var instruction = nodeToInstruction.get(ctx.func());
+        Instruction instruction = nodeToInstruction.get(ctx.func());
         if (ctx.MINUS() != null) {
             instruction = ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -450,8 +449,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprString(PuffinBasicParser.ExprStringContext ctx) {
-        var text = unquote(ctx.string().STRING().getText());
-        var id = ir.getSymbolTable().addTmp(STRING,
+        String text = unquote(ctx.string().STRING().getText());
+        int id = ir.getSymbolTable().addTmp(STRING,
                 entry -> entry.getValue().setString(text));
         copyAndRegisterExprResult(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -461,16 +460,16 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprExp(PuffinBasicParser.ExprExpContext ctx) {
-        var expr1 = ctx.expr(0);
-        var expr2 = ctx.expr(1);
+        PuffinBasicParser.ExprContext expr1 = ctx.expr(0);
+        PuffinBasicParser.ExprContext expr2 = ctx.expr(1);
         int instr1res = lookupInstruction(expr1).result;
         int instr2res = lookupInstruction(expr2).result;
-        var dt1 = ir.getSymbolTable().get(instr1res).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(instr2res).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(instr1res).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(instr2res).getType().getAtomTypeId();
         Types.assertNumeric(dt1, dt2, () -> getCtxString(ctx));
-        var upcast = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
-        var result = ir.getSymbolTable().addTmp(upcast, e -> {});
-        final OpCode opCode;
+        PuffinBasicAtomTypeId upcast = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
+        int result = ir.getSymbolTable().addTmp(upcast, e -> {});
+        OpCode opCode;
         switch (upcast) {
             case INT32:
                 opCode = OpCode.EXPI32;
@@ -495,16 +494,16 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprMulDiv(PuffinBasicParser.ExprMulDivContext ctx) {
-        var expr1 = ctx.expr(0);
-        var expr2 = ctx.expr(1);
+        PuffinBasicParser.ExprContext expr1 = ctx.expr(0);
+        PuffinBasicParser.ExprContext expr2 = ctx.expr(1);
         int instr1res = lookupInstruction(expr1).result;
         int instr2res = lookupInstruction(expr2).result;
-        var dt1 = ir.getSymbolTable().get(instr1res).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(instr2res).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(instr1res).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(instr2res).getType().getAtomTypeId();
         Types.assertNumeric(dt1, dt2, () -> getCtxString(ctx));
-        var upcast = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
-        final int result;
-        final OpCode opCode;
+        PuffinBasicAtomTypeId upcast = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
+        int result;
+        OpCode opCode;
         if (ctx.MUL() != null) {
             result = ir.getSymbolTable().addTmp(upcast, e -> {});
             switch (upcast) {
@@ -543,12 +542,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprPlusMinus(PuffinBasicParser.ExprPlusMinusContext ctx) {
-        var expr1 = ctx.expr(0);
-        var expr2 = ctx.expr(1);
+        PuffinBasicParser.ExprContext expr1 = ctx.expr(0);
+        PuffinBasicParser.ExprContext expr2 = ctx.expr(1);
         int instr1res = lookupInstruction(expr1).result;
         int instr2res = lookupInstruction(expr2).result;
-        var dt1 = ir.getSymbolTable().get(instr1res).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(instr2res).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(instr1res).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(instr2res).getType().getAtomTypeId();
         boolean plus = ctx.PLUS() != null;
         if (dt1 == STRING && dt2 == STRING) {
             if (plus) {
@@ -567,9 +566,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             }
         } else {
             Types.assertNumeric(dt1, dt2, () -> getCtxString(ctx));
-            var upcast = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
-            var result = ir.getSymbolTable().addTmp(upcast, e -> {});
-            final OpCode opCode;
+            PuffinBasicAtomTypeId upcast = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
+            int result = ir.getSymbolTable().addTmp(upcast, e -> {});
+            OpCode opCode;
             switch (upcast) {
                 case INT32:
                     opCode = plus ? OpCode.ADDI32 : OpCode.SUBI32;
@@ -595,12 +594,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     private void addArithmeticOpExpr(
             ParserRuleContext parent, OpCode opCode, PuffinBasicParser.ExprContext exprLeft, PuffinBasicParser.ExprContext exprRight) {
-        var exprL = lookupInstruction(exprLeft);
-        var exprR = lookupInstruction(exprRight);
-        var dt1 = ir.getSymbolTable().get(exprL.result).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(exprR.result).getType().getAtomTypeId();
+        Instruction exprL = lookupInstruction(exprLeft);
+        Instruction exprR = lookupInstruction(exprRight);
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(exprL.result).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(exprR.result).getType().getAtomTypeId();
         Types.assertNumeric(dt1, dt2, () -> getCtxString(parent));
-        var result = ir.getSymbolTable().addTmp(
+        int result = ir.getSymbolTable().addTmp(
                 Types.upcast(dt1,
                         ir.getSymbolTable().get(exprR.result).getType().getAtomTypeId(),
                         () -> getCtxString(parent)),
@@ -613,13 +612,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprRelational(PuffinBasicParser.ExprRelationalContext ctx) {
-        var exprL = lookupInstruction(ctx.expr(0));
-        var exprR = lookupInstruction(ctx.expr(1));
-        var dt1 = ir.getSymbolTable().get(exprL.result).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(exprR.result).getType().getAtomTypeId();
+        Instruction exprL = lookupInstruction(ctx.expr(0));
+        Instruction exprR = lookupInstruction(ctx.expr(1));
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(exprL.result).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(exprR.result).getType().getAtomTypeId();
         checkDataTypeMatch(dt1, dt2, () -> getCtxString(ctx));
 
-        final OpCode opCode;
+        OpCode opCode;
         if (dt1 == STRING && dt2 == STRING) {
             opCode = ctx.RELEQ() != null ? OpCode.EQSTR
                     : ctx.RELNEQ() != null ? OpCode.NESTR
@@ -671,7 +670,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             );
         }
 
-        var result = ir.getSymbolTable().addTmp(INT64, e -> {});
+        int result = ir.getSymbolTable().addTmp(INT64, e -> {});
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 opCode, exprL.result, exprR.result, result
@@ -680,12 +679,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprLogNot(PuffinBasicParser.ExprLogNotContext ctx) {
-        var expr = lookupInstruction(ctx.expr());
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertNumeric(
                 ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx)
         );
-        var result = ir.getSymbolTable().addTmp(INT64, e -> {});
+        int result = ir.getSymbolTable().addTmp(INT64, e -> {});
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.NOT, expr.result, NULL_ID, result
@@ -694,7 +693,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprLogical(PuffinBasicParser.ExprLogicalContext ctx) {
-        final OpCode opCode = ctx.LOGAND() != null ? OpCode.AND
+        OpCode opCode = ctx.LOGAND() != null ? OpCode.AND
                 : ctx.LOGOR() != null ? OpCode.OR
                 : ctx.LOGXOR() != null ? OpCode.XOR
                 : ctx.LOGEQV() != null ? OpCode.EQV
@@ -714,7 +713,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitExprBitwise(PuffinBasicParser.ExprBitwiseContext ctx) {
-        final OpCode opCode = ctx.BWLSFT() != null ? OpCode.LEFTSHIFT
+        OpCode opCode = ctx.BWLSFT() != null ? OpCode.LEFTSHIFT
                 : ctx.BWRSFT() != null ? OpCode.RIGHTSHIFT
                 : null;
 
@@ -730,14 +729,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     private void addLogicalOpExpr(
             ParserRuleContext parent, OpCode opCode, PuffinBasicParser.ExprContext exprLeft, PuffinBasicParser.ExprContext exprRight) {
-        var exprL = lookupInstruction(exprLeft);
-        var exprR = lookupInstruction(exprRight);
+        Instruction exprL = lookupInstruction(exprLeft);
+        Instruction exprR = lookupInstruction(exprRight);
         Types.assertNumeric(
                 ir.getSymbolTable().get(exprL.result).getType().getAtomTypeId(),
                 ir.getSymbolTable().get(exprR.result).getType().getAtomTypeId(),
                 () -> getCtxString(parent)
         );
-        var result = ir.getSymbolTable().addTmp(INT64, e -> {});
+        int result = ir.getSymbolTable().addTmp(INT64, e -> {});
         nodeToInstruction.put(parent, ir.addInstruction(
                 sourceFile, currentLineNumber, parent.start.getStartIndex(), parent.stop.getStopIndex(),
                 opCode, exprL.result, exprR.result, result
@@ -746,14 +745,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     private void addBitwiseOpExpr(
             ParserRuleContext parent, OpCode opCode, PuffinBasicParser.ExprContext exprLeft, PuffinBasicParser.ExprContext exprRight) {
-        var exprL = lookupInstruction(exprLeft);
-        var exprR = lookupInstruction(exprRight);
+        Instruction exprL = lookupInstruction(exprLeft);
+        Instruction exprR = lookupInstruction(exprRight);
         Types.assertNumeric(
                 ir.getSymbolTable().get(exprL.result).getType().getAtomTypeId(),
                 ir.getSymbolTable().get(exprR.result).getType().getAtomTypeId(),
                 () -> getCtxString(parent)
         );
-        var result = ir.getSymbolTable().addTmp(INT64, e -> {});
+        int result = ir.getSymbolTable().addTmp(INT64, e -> {});
         nodeToInstruction.put(parent, ir.addInstruction(
                 sourceFile, currentLineNumber, parent.start.getStartIndex(), parent.stop.getStopIndex(),
                 opCode, exprL.result, exprR.result, result
@@ -1030,8 +1029,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncLen(PuffinBasicParser.FuncLenContext ctx) {
-        var exprInstruction = lookupInstruction(ctx.expr(0));
-        var axisId = ctx.axis != null ? lookupInstruction(ctx.axis).result : NULL_ID;
+        Instruction exprInstruction = lookupInstruction(ctx.expr(0));
+        int axisId = ctx.axis != null ? lookupInstruction(ctx.axis).result : NULL_ID;
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LEN, exprInstruction.result, axisId, ir.getSymbolTable().addTmp(INT32, c -> {})
@@ -1061,8 +1060,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncLeftDlr(PuffinBasicParser.FuncLeftDlrContext ctx) {
-        var xdlr = lookupInstruction(ctx.expr(0));
-        var n = lookupInstruction(ctx.expr(1));
+        Instruction xdlr = lookupInstruction(ctx.expr(0));
+        Instruction n = lookupInstruction(ctx.expr(1));
         Types.assertString(ir.getSymbolTable().get(xdlr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         Types.assertNumeric(ir.getSymbolTable().get(n.result).getType().getAtomTypeId(),
@@ -1075,8 +1074,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncRightDlr(PuffinBasicParser.FuncRightDlrContext ctx) {
-        var xdlr = lookupInstruction(ctx.expr(0));
-        var n = lookupInstruction(ctx.expr(1));
+        Instruction xdlr = lookupInstruction(ctx.expr(0));
+        Instruction n = lookupInstruction(ctx.expr(1));
         Types.assertString(ir.getSymbolTable().get(xdlr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         Types.assertNumeric(ir.getSymbolTable().get(n.result).getType().getAtomTypeId(),
@@ -1190,7 +1189,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncLoc(PuffinBasicParser.FuncLocContext ctx) {
-        var fileNumber = lookupInstruction(ctx.expr());
+        Instruction fileNumber = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(fileNumber.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
@@ -1201,7 +1200,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncLof(PuffinBasicParser.FuncLofContext ctx) {
-        var fileNumber = lookupInstruction(ctx.expr());
+        Instruction fileNumber = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(fileNumber.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
@@ -1212,7 +1211,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncEof(PuffinBasicParser.FuncEofContext ctx) {
-        var fileNumber = lookupInstruction(ctx.expr());
+        Instruction fileNumber = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(fileNumber.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
@@ -1223,7 +1222,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncEnvironDlr(PuffinBasicParser.FuncEnvironDlrContext ctx) {
-        var expr = lookupInstruction(ctx.expr());
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertString(ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
@@ -1234,13 +1233,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncInputDlr(PuffinBasicParser.FuncInputDlrContext ctx) {
-        var x = lookupInstruction(ctx.expr(0));
+        Instruction x = lookupInstruction(ctx.expr(0));
         Types.assertNumeric(ir.getSymbolTable().get(x.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
 
         int fileNumberId;
         if (ctx.expr().size() == 2) {
-            var fileNumber = lookupInstruction(ctx.expr(1));
+            Instruction fileNumber = lookupInstruction(ctx.expr(1));
             Types.assertNumeric(ir.getSymbolTable().get(fileNumber.result).getType().getAtomTypeId(),
                     () -> getCtxString(ctx));
             fileNumberId = fileNumber.result;
@@ -1280,13 +1279,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncMin(PuffinBasicParser.FuncMinContext ctx) {
-        var expr1 = lookupInstruction(ctx.expr(0));
-        var expr2 = lookupInstruction(ctx.expr(1));
-        var dt1 = ir.getSymbolTable().get(expr1.result).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(expr2.result).getType().getAtomTypeId();
+        Instruction expr1 = lookupInstruction(ctx.expr(0));
+        Instruction expr2 = lookupInstruction(ctx.expr(1));
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(expr1.result).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(expr2.result).getType().getAtomTypeId();
         Types.assertNumeric(dt1, () -> getCtxString(ctx));
         Types.assertNumeric(dt2, () -> getCtxString(ctx));
-        var resdt = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
+        PuffinBasicAtomTypeId resdt = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.MIN, expr1.result, expr2.result,
@@ -1295,13 +1294,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncMax(PuffinBasicParser.FuncMaxContext ctx) {
-        var expr1 = lookupInstruction(ctx.expr(0));
-        var expr2 = lookupInstruction(ctx.expr(1));
-        var dt1 = ir.getSymbolTable().get(expr1.result).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(expr2.result).getType().getAtomTypeId();
+        Instruction expr1 = lookupInstruction(ctx.expr(0));
+        Instruction expr2 = lookupInstruction(ctx.expr(1));
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(expr1.result).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(expr2.result).getType().getAtomTypeId();
         Types.assertNumeric(dt1, () -> getCtxString(ctx));
         Types.assertNumeric(dt2, () -> getCtxString(ctx));
-        var resdt = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
+        PuffinBasicAtomTypeId resdt = Types.upcast(dt1, dt2, () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.MAX, expr1.result, expr2.result,
@@ -1309,9 +1308,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private Instruction getArray1dVariableInstruction(ParserRuleContext ctx, VariableContext varCtx, boolean numeric) {
-        var varInstr = lookupInstruction(varCtx);
+        Instruction varInstr = lookupInstruction(varCtx);
         assertVariable(ir.getSymbolTable().get(varInstr.result), () -> getCtxString(ctx));
-        var varEntry = (STVariable) ir.getSymbolTable().get(varInstr.result);
+        STVariable varEntry = (STVariable) ir.getSymbolTable().get(varInstr.result);
         assert1DArray(varEntry, () -> getCtxString(ctx));
         if (numeric) {
             assertNumeric(varEntry.getType().getAtomTypeId(), () -> getCtxString(ctx));
@@ -1320,24 +1319,24 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private Instruction getArray2dVariableInstruction(ParserRuleContext ctx, VariableContext varCtx) {
-        var varInstr = lookupInstruction(varCtx);
+        Instruction varInstr = lookupInstruction(varCtx);
         assertVariable(ir.getSymbolTable().get(varInstr.result), () -> getCtxString(ctx));
-        var varEntry = (STVariable) ir.getSymbolTable().get(varInstr.result);
+        STVariable varEntry = (STVariable) ir.getSymbolTable().get(varInstr.result);
         assert2DArray(varEntry, () -> getCtxString(ctx));
         return varInstr;
     }
 
     private Instruction getArrayNdVariableInstruction(ParserRuleContext ctx, VariableContext varCtx) {
-        var varInstr = lookupInstruction(varCtx);
+        Instruction varInstr = lookupInstruction(varCtx);
         assertVariable(ir.getSymbolTable().get(varInstr.result), () -> getCtxString(ctx));
-        var varEntry = (STVariable) ir.getSymbolTable().get(varInstr.result);
+        STVariable varEntry = (STVariable) ir.getSymbolTable().get(varInstr.result);
         assertNDArray(varEntry, () -> getCtxString(ctx));
         return varInstr;
     }
 
     @Override
     public void exitFuncArray1DMin(PuffinBasicParser.FuncArray1DMinContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAY1DMIN, var1Instr.result, NULL_ID,
@@ -1346,7 +1345,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray1DMax(PuffinBasicParser.FuncArray1DMaxContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAY1DMAX, var1Instr.result, NULL_ID,
@@ -1355,7 +1354,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray1DMean(PuffinBasicParser.FuncArray1DMeanContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAY1DMEAN, var1Instr.result, NULL_ID,
@@ -1364,7 +1363,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray1DSum(PuffinBasicParser.FuncArray1DSumContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAY1DSUM, var1Instr.result, NULL_ID,
@@ -1373,7 +1372,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray1DStd(PuffinBasicParser.FuncArray1DStdContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAY1DSTD, var1Instr.result, NULL_ID,
@@ -1382,7 +1381,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray1DMedian(PuffinBasicParser.FuncArray1DMedianContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAY1DMEDIAN, var1Instr.result, NULL_ID,
@@ -1391,8 +1390,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray1DBinSearch(PuffinBasicParser.FuncArray1DBinSearchContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), false);
-        var expr = lookupInstruction(ctx.expr());
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), false);
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
@@ -1403,8 +1402,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray1DPct(PuffinBasicParser.FuncArray1DPctContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
-        var expr = lookupInstruction(ctx.expr());
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), true);
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
 
         nodeToInstruction.put(ctx, ir.addInstruction(
@@ -1415,12 +1414,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray2DFindRow(PuffinBasicParser.FuncArray2DFindRowContext ctx) {
-        var varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
-        var x1 = lookupInstruction(ctx.x1);
-        var y1 = lookupInstruction(ctx.y1);
-        var x2 = lookupInstruction(ctx.x2);
-        var y2 = lookupInstruction(ctx.y2);
-        var search = lookupInstruction(ctx.search);
+        Instruction varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
+        Instruction x1 = lookupInstruction(ctx.x1);
+        Instruction y1 = lookupInstruction(ctx.y1);
+        Instruction x2 = lookupInstruction(ctx.x2);
+        Instruction y2 = lookupInstruction(ctx.y2);
+        Instruction search = lookupInstruction(ctx.search);
         Types.assertIntType(ir.getSymbolTable().get(x1.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
         Types.assertIntType(ir.getSymbolTable().get(y1.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
         Types.assertIntType(ir.getSymbolTable().get(x2.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
@@ -1441,12 +1440,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncArray2DFindColumn(PuffinBasicParser.FuncArray2DFindColumnContext ctx) {
-        var varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
-        var x1 = lookupInstruction(ctx.x1);
-        var y1 = lookupInstruction(ctx.y1);
-        var x2 = lookupInstruction(ctx.x2);
-        var y2 = lookupInstruction(ctx.y2);
-        var search = lookupInstruction(ctx.search);
+        Instruction varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
+        Instruction x1 = lookupInstruction(ctx.x1);
+        Instruction y1 = lookupInstruction(ctx.y1);
+        Instruction x2 = lookupInstruction(ctx.x2);
+        Instruction y2 = lookupInstruction(ctx.y2);
+        Instruction search = lookupInstruction(ctx.search);
         Types.assertIntType(ir.getSymbolTable().get(x1.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
         Types.assertIntType(ir.getSymbolTable().get(y1.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
         Types.assertIntType(ir.getSymbolTable().get(x2.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
@@ -1467,9 +1466,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncHsb2Rgb(PuffinBasicParser.FuncHsb2RgbContext ctx) {
-        var h = lookupInstruction(ctx.expr(0));
-        var s = lookupInstruction(ctx.expr(1));
-        var b = lookupInstruction(ctx.expr(2));
+        Instruction h = lookupInstruction(ctx.expr(0));
+        Instruction s = lookupInstruction(ctx.expr(1));
+        Instruction b = lookupInstruction(ctx.expr(2));
         Types.assertNumeric(ir.getSymbolTable().get(h.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
         Types.assertNumeric(ir.getSymbolTable().get(s.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
         Types.assertNumeric(ir.getSymbolTable().get(b.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
@@ -1548,7 +1547,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     @Override
     public void exitFuncIsKeyPressed(PuffinBasicParser.FuncIsKeyPressedContext ctx) {
         assertGraphics();
-        var expr = lookupInstruction(ctx.expr());
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertString(ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
         nodeToInstruction.put(ctx, ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -1558,14 +1557,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncMemberMethodCall(PuffinBasicParser.FuncMemberMethodCallContext ctx) {
-        var varInstruction = lookupInstruction(ctx.variable());
-        var objectType = ir.getSymbolTable().get(varInstruction.result).getType();
-        var funcName = ctx.funcname().getText();
-        var returnType = objectType.getFuncCallReturnType(funcName);
+        Instruction varInstruction = lookupInstruction(ctx.variable());
+        PuffinBasicType objectType = ir.getSymbolTable().get(varInstruction.result).getType();
+        String funcName = ctx.funcname().getText();
+        PuffinBasicType returnType = objectType.getFuncCallReturnType(funcName);
 
         List<PuffinBasicType> paramTypes = new ArrayList<>(ctx.expr().size());
-        for (var exprCtx : ctx.expr()) {
-            var exprInstruction = lookupInstruction(exprCtx);
+        for (PuffinBasicParser.ExprContext exprCtx : ctx.expr()) {
+            Instruction exprInstruction = lookupInstruction(exprCtx);
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.PARAM1, exprInstruction.result, NULL_ID, NULL_ID
@@ -1585,8 +1584,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncSplitDlr(PuffinBasicParser.FuncSplitDlrContext ctx) {
-        var str = lookupInstruction(ctx.expr(0));
-        var regex = lookupInstruction(ctx.expr(1));
+        Instruction str = lookupInstruction(ctx.expr(0));
+        Instruction regex = lookupInstruction(ctx.expr(1));
         Types.assertString(ir.getSymbolTable().get(str.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         Types.assertString(ir.getSymbolTable().get(regex.result).getType().getAtomTypeId(),
@@ -1599,10 +1598,10 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFuncAllocArray(PuffinBasicParser.FuncAllocArrayContext ctx) {
-        var elementType = PuffinBasicAtomTypeId.lookup(ctx.varsuffix().getText());
+        PuffinBasicAtomTypeId elementType = PuffinBasicAtomTypeId.lookup(ctx.varsuffix().getText());
 
-        for (var exprCtx : ctx.expr()) {
-            var exprInstr = lookupInstruction(exprCtx);
+        for (PuffinBasicParser.ExprContext exprCtx : ctx.expr()) {
+            Instruction exprInstr = lookupInstruction(exprCtx);
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.PARAM1, exprInstr.result, NULL_ID, NULL_ID
@@ -1619,7 +1618,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             OpCode opCode, ParserRuleContext parent,
             PuffinBasicParser.ExprContext expr, NumericOrString numericOrString)
     {
-        var exprInstruction = lookupInstruction(expr);
+        Instruction exprInstruction = lookupInstruction(expr);
         assertNumericOrString(exprInstruction.result, parent, numericOrString);
         return ir.addInstruction(
                 sourceFile, currentLineNumber, parent.start.getStartIndex(), parent.stop.getStopIndex(),
@@ -1635,7 +1634,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             NumericOrString numericOrString,
             int result)
     {
-        var exprInstruction = lookupInstruction(expr);
+        Instruction exprInstruction = lookupInstruction(expr);
         assertNumericOrString(exprInstruction.result, parent, numericOrString);
         return ir.addInstruction(
                 sourceFile, currentLineNumber, parent.start.getStartIndex(), parent.stop.getStopIndex(),
@@ -1644,7 +1643,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private void assertNumericOrString(int id, ParserRuleContext parent, NumericOrString numericOrString) {
-        var dt = ir.getSymbolTable().get(id).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt = ir.getSymbolTable().get(id).getType().getAtomTypeId();
         if (numericOrString == NumericOrString.NUMERIC) {
             Types.assertNumeric(dt, () -> getCtxString(parent));
         } else {
@@ -1658,25 +1657,25 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitListstmt(PuffinBasicParser.ListstmtContext ctx) {
-        final PuffinBasicType itemType;
+        PuffinBasicType itemType;
         if (ctx.typename != null) {
             // struct
-            var typeName = ctx.typename.VARNAME().getText();
+            String typeName = ctx.typename.VARNAME().getText();
             itemType = ir.getSymbolTable().getStructType(typeName);
         } else if (ctx.dimtypesuffix != null) {
             // array
-            var atomType = PuffinBasicAtomTypeId.lookup(ctx.dimtypesuffix.getText());
+            PuffinBasicAtomTypeId atomType = PuffinBasicAtomTypeId.lookup(ctx.dimtypesuffix.getText());
             itemType = new ArrayType(atomType);
         } else {
             // scalar data type
-            var atomType = PuffinBasicAtomTypeId.lookup(ctx.typesuffix.getText());
+            PuffinBasicAtomTypeId atomType = PuffinBasicAtomTypeId.lookup(ctx.typesuffix.getText());
             itemType = new ScalarType(atomType);
         }
-        var instanceName = ctx.listname.VARNAME().getText();
+        String instanceName = ctx.listname.VARNAME().getText();
 
-        var variableName = new VariableName(instanceName, null, COMPOSITE);
-        var listType = new ListType(itemType);
-        var id = ir.getSymbolTable().addCompositeVariable(
+        VariableName variableName = new VariableName(instanceName, null, COMPOSITE);
+        ListType listType = new ListType(itemType);
+        int id = ir.getSymbolTable().addCompositeVariable(
                 variableName, new STVariable(null, new Variable(variableName, listType)));
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -1686,13 +1685,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitSetstmt(PuffinBasicParser.SetstmtContext ctx) {
-        var atomType = PuffinBasicAtomTypeId.lookup(ctx.typesuffix.getText());
+        PuffinBasicAtomTypeId atomType = PuffinBasicAtomTypeId.lookup(ctx.typesuffix.getText());
         PuffinBasicType itemType = new ScalarType(atomType);
-        var instanceName = ctx.setname.VARNAME().getText();
+        String instanceName = ctx.setname.VARNAME().getText();
 
-        var variableName = new VariableName(instanceName, null, COMPOSITE);
-        var setType = new SetType(itemType);
-        var id = ir.getSymbolTable().addCompositeVariable(
+        VariableName variableName = new VariableName(instanceName, null, COMPOSITE);
+        SetType setType = new SetType(itemType);
+        int id = ir.getSymbolTable().addCompositeVariable(
                 variableName, new STVariable(null, new Variable(variableName, setType)));
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -1702,25 +1701,25 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitDictstmt(PuffinBasicParser.DictstmtContext ctx) {
-        var keyAtomType = PuffinBasicAtomTypeId.lookup(ctx.dictk1.getText());
+        PuffinBasicAtomTypeId keyAtomType = PuffinBasicAtomTypeId.lookup(ctx.dictk1.getText());
         PuffinBasicType keyType = new ScalarType(keyAtomType);
 
-        final PuffinBasicType valueType;
+        PuffinBasicType valueType;
         if (ctx.dictv1 != null) {
             // struct
-            var typeName = ctx.dictv1.VARNAME().getText();
+            String typeName = ctx.dictv1.VARNAME().getText();
             valueType = ir.getSymbolTable().getStructType(typeName);
         } else {
             // scalar data type
-            var atomType = PuffinBasicAtomTypeId.lookup(ctx.dictv2.getText());
+            PuffinBasicAtomTypeId atomType = PuffinBasicAtomTypeId.lookup(ctx.dictv2.getText());
             valueType = new ScalarType(atomType);
         }
 
-        var instanceName = ctx.dictname.VARNAME().getText();
+        String instanceName = ctx.dictname.VARNAME().getText();
 
-        var variableName = new VariableName(instanceName, null, COMPOSITE);
-        var dictType = new DictType(keyType, valueType);
-        var id = ir.getSymbolTable().addCompositeVariable(
+        VariableName variableName = new VariableName(instanceName, null, COMPOSITE);
+        DictType dictType = new DictType(keyType, valueType);
+        int id = ir.getSymbolTable().addCompositeVariable(
                 variableName, new STVariable(null, new Variable(variableName, dictType)));
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -1730,11 +1729,11 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitStructinstancestmt(PuffinBasicParser.StructinstancestmtContext ctx) {
-        var typeName = ctx.varname(0).VARNAME().getText();
-        var instanceName = ctx.varname(1).VARNAME().getText();
-        var variableName = new VariableName(instanceName, null, COMPOSITE);
-        var type = ir.getSymbolTable().getStructType(typeName);
-        var id = ir.getSymbolTable().addCompositeVariable(
+        String typeName = ctx.varname(0).VARNAME().getText();
+        String instanceName = ctx.varname(1).VARNAME().getText();
+        VariableName variableName = new VariableName(instanceName, null, COMPOSITE);
+        STObjects.StructType type = ir.getSymbolTable().getStructType(typeName);
+        int id = ir.getSymbolTable().addCompositeVariable(
                 variableName, new STVariable(null, new Variable(variableName, type)));
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -1744,34 +1743,34 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitStructstmt(PuffinBasicParser.StructstmtContext ctx) {
-        final var typeName = ctx.varname().VARNAME().getText();
-        final var struct = new STObjects.StructType(typeName);
-        for (var compCtx : ctx.compositetype()) {
+        String typeName = ctx.varname().VARNAME().getText();
+        STObjects.StructType struct = new STObjects.StructType(typeName);
+        for (PuffinBasicParser.CompositetypeContext compCtx : ctx.compositetype()) {
             if (compCtx.var1 != null) {
                 // scalar
-                var scalarVarName = compCtx.var1.VARNAME().getText();
-                var scalarAtomTypeId = ir.getSymbolTable().getDataTypeFor(
+                String scalarVarName = compCtx.var1.VARNAME().getText();
+                PuffinBasicAtomTypeId scalarAtomTypeId = ir.getSymbolTable().getDataTypeFor(
                         scalarVarName, compCtx.var2 != null ? compCtx.var2.getText() : null);
                 //PuffinBasicAtomTypeId.lookup(compCtx.var2.getText());
-                var name = new VariableName(scalarVarName,
+                VariableName name = new VariableName(scalarVarName,
                         scalarAtomTypeId.getRepr(),
                         scalarAtomTypeId);
                 struct.declareField(name, new ScalarType(name.getDataType()));
             } else if (compCtx.DIM() != null) {
                 // array
-                var arrayName = compCtx.elem.VARNAME().getText();
-                var arrayAtomType = ir.getSymbolTable().getDataTypeFor(arrayName,
+                String arrayName = compCtx.elem.VARNAME().getText();
+                PuffinBasicAtomTypeId arrayAtomType = ir.getSymbolTable().getDataTypeFor(arrayName,
                         compCtx.elemsuffix != null ? compCtx.elemsuffix.getText() : null);
                 IntList dims = new IntArrayList(compCtx.DECIMAL().size());
-                for (var dimStrNode : compCtx.DECIMAL()) {
+                for (TerminalNode dimStrNode : compCtx.DECIMAL()) {
                     dims.add(Numbers.parseInt32(dimStrNode.getText(), () -> getCtxString(ctx)));
                 }
                 struct.declareField(new VariableName(arrayName, arrayAtomType.getRepr(), arrayAtomType),
                         new ArrayType(arrayAtomType, dims, true));
             } else if (compCtx.LIST() != null) {
                 // list
-                var name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
-                final PuffinBasicType itemType;
+                VariableName name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
+                PuffinBasicType itemType;
                 if (compCtx.list1 != null) {
                     // struct
                     itemType = ir.getSymbolTable().getStructType(compCtx.list1.VARNAME().getText());
@@ -1782,13 +1781,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 struct.declareField(name, new ListType(itemType));
             } else if (compCtx.SET() != null) {
                 // set
-                var name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
+                VariableName name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
                 struct.declareField(name, new SetType(new ScalarType(PuffinBasicAtomTypeId.lookup(compCtx.set2.getText()))));
             } else if (compCtx.DICT() != null) {
                 // dict
-                var name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
-                var keyType = new ScalarType(PuffinBasicAtomTypeId.lookup(compCtx.dictk1.getText()));
-                final PuffinBasicType valueType;
+                VariableName name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
+                ScalarType keyType = new ScalarType(PuffinBasicAtomTypeId.lookup(compCtx.dictk1.getText()));
+                PuffinBasicType valueType;
                 if (compCtx.dictv1 != null) {
                     // struct
                     valueType = ir.getSymbolTable().getStructType(compCtx.dictv1.VARNAME().getText());
@@ -1799,8 +1798,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 struct.declareField(name, new DictType(keyType, valueType));
             } else if (compCtx.struct1 != null) {
                 // struct
-                var memberType = compCtx.struct1.VARNAME().getText();
-                var name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
+                String memberType = compCtx.struct1.VARNAME().getText();
+                VariableName name = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
                 struct.declareField(name, ir.getSymbolTable().getStructType(memberType));
             } else {
                 // throw
@@ -1824,10 +1823,10 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitLetstmt(PuffinBasicParser.LetstmtContext ctx) {
-        var varInstruction = lookupInstruction(ctx.variable());
-        var exprInstruction = lookupInstruction(ctx.expr());
+        Instruction varInstruction = lookupInstruction(ctx.variable());
+        Instruction exprInstruction = lookupInstruction(ctx.expr());
 
-        var varType = ir.getSymbolTable().get(varInstruction.result).getType();
+        PuffinBasicType varType = ir.getSymbolTable().get(varInstruction.result).getType();
         if (varType.getTypeId() == UDF) {
             throw new PuffinBasicSemanticError(
                     BAD_ASSIGNMENT,
@@ -1844,7 +1843,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             );
         }
 
-        var assignInstruction = ir.addInstruction(
+        Instruction assignInstruction = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ASSIGN, exprInstruction.result, varInstruction.result, varInstruction.result
         );
@@ -1853,9 +1852,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitAutoletstmt(PuffinBasicParser.AutoletstmtContext ctx) {
-        var varname = ctx.varname().getText();
-        var exprInstruction = lookupInstruction(ctx.expr());
-        var resultType = ir.getSymbolTable().get(exprInstruction.result).getType();
+        String varname = ctx.varname().getText();
+        Instruction exprInstruction = lookupInstruction(ctx.expr());
+        PuffinBasicType resultType = ir.getSymbolTable().get(exprInstruction.result).getType();
         int varId = ir.getSymbolTable().addVariableOrUDF(
                 new VariableName(varname, null, resultType.getAtomTypeId()),
                 variableName1 -> new Variable(variableName1, resultType),
@@ -1873,7 +1872,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitPrinthashstmt(PuffinBasicParser.PrinthashstmtContext ctx) {
-        var fileNumber = lookupInstruction(ctx.filenum);
+        Instruction fileNumber = lookupInstruction(ctx.filenum);
         handlePrintstmt(ctx, ctx.printlist().children, fileNumber);
     }
 
@@ -1885,7 +1884,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         boolean endsWithNewline = true;
         for (ParseTree child : children) {
             if (child instanceof PuffinBasicParser.ExprContext) {
-                var exprInstruction = lookupInstruction((PuffinBasicParser.ExprContext) child);
+                Instruction exprInstruction = lookupInstruction((PuffinBasicParser.ExprContext) child);
                 ir.addInstruction(
                         sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                         OpCode.PRINT, exprInstruction.result, NULL_ID, NULL_ID
@@ -1897,7 +1896,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         }
 
         if (endsWithNewline || fileNumber != null) {
-            var newlineId = ir.getSymbolTable().addTmp(STRING,
+            int newlineId = ir.getSymbolTable().addTmp(STRING,
                     entry -> entry.getValue().setString(System.lineSeparator()));
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -1905,7 +1904,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             );
         }
 
-        final int fileNumberId;
+        int fileNumberId;
         if (fileNumber != null) {
             Types.assertNumeric(ir.getSymbolTable().get(fileNumber.result).getType().getAtomTypeId(),
                     () -> getCtxString(ctx));
@@ -1926,7 +1925,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitPrinthashusingstmt(PuffinBasicParser.PrinthashusingstmtContext ctx) {
-        var fileNumber = lookupInstruction(ctx.filenum);
+        Instruction fileNumber = lookupInstruction(ctx.filenum);
         handlePrintusing(ctx, ctx.format, ctx.printlist().children, fileNumber);
     }
 
@@ -1936,11 +1935,11 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             List<ParseTree> children,
             Instruction fileNumber)
     {
-        var format = lookupInstruction(formatCtx);
+        Instruction format = lookupInstruction(formatCtx);
         boolean endsWithNewline = true;
         for (ParseTree child : children) {
             if (child instanceof PuffinBasicParser.ExprContext) {
-                var exprInstruction = lookupInstruction((PuffinBasicParser.ExprContext) child);
+                Instruction exprInstruction = lookupInstruction((PuffinBasicParser.ExprContext) child);
                 ir.addInstruction(
                         sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                         OpCode.PRINTUSING, format.result, exprInstruction.result, NULL_ID
@@ -1951,7 +1950,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             }
         }
         if (endsWithNewline || fileNumber != null) {
-            var newlineId = ir.getSymbolTable().addTmp(STRING,
+            int newlineId = ir.getSymbolTable().addTmp(STRING,
                     entry -> entry.getValue().setString(System.lineSeparator()));
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -1959,7 +1958,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             );
         }
 
-        final int fileNumberId;
+        int fileNumberId;
         if (fileNumber != null) {
             Types.assertNumeric(ir.getSymbolTable().get(fileNumber.result).getType().getAtomTypeId(),
                     () -> getCtxString(ctx));
@@ -1981,14 +1980,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             dims.add(0);
         }
 
-        var variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
-        var varId = ir.getSymbolTable().addVariableOrUDF(
+        VariableName variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
+        int varId = ir.getSymbolTable().addVariableOrUDF(
                 variableName,
                 variableName1 -> new Variable(variableName1, new ArrayType(variableName1.getDataType(), dims, true)),
                 (id, entry, v1) -> entry.getValue().setArrayDimensions(dims));
 
-        for (var expr : ctx.expr()) {
-            var dimi = lookupInstruction(expr);
+        for (PuffinBasicParser.ExprContext expr : ctx.expr()) {
+            Instruction dimi = lookupInstruction(expr);
             Types.assertNumeric(ir.getSymbolTable().get(dimi.result).getType().getAtomTypeId(),
                     () -> getCtxString(ctx));
             ir.addInstruction(
@@ -2009,14 +2008,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             dims.add(0);
         }
 
-        var variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
-        var varId = ir.getSymbolTable().addVariableOrUDF(
+        VariableName variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
+        int varId = ir.getSymbolTable().addVariableOrUDF(
                 variableName,
                 variableName1 -> new Variable(variableName1, new ArrayType(variableName1.getDataType(), dims, true)),
                 (id, entry, v1) -> entry.getValue().setArrayDimensions(dims));
 
-        for (var expr : ctx.expr()) {
-            var dimi = lookupInstruction(expr);
+        for (PuffinBasicParser.ExprContext expr : ctx.expr()) {
+            Instruction dimi = lookupInstruction(expr);
             Types.assertNumeric(ir.getSymbolTable().get(dimi.result).getType().getAtomTypeId(),
                     () -> getCtxString(ctx));
             ir.addInstruction(
@@ -2032,12 +2031,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void enterDeffnstmt(PuffinBasicParser.DeffnstmtContext ctx) {
-        var variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
+        VariableName variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
 
         ir.getSymbolTable().addVariableOrUDF(variableName,
                 variableName1 -> Variable.of(variableName1, VariableKindHint.DERIVE_FROM_NAME, () -> getCtxString(ctx)),
                 (varId, varEntry, variable) -> {
-                    var udfState = new UDFState(variableName, (STUDF) varEntry);
+                    UDFState udfState = new UDFState(variableName, (STUDF) varEntry);
                     udfStateMap.put(variable, udfState);
 
                     // GOTO postFuncDecl
@@ -2059,19 +2058,19 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitDeffnstmt(PuffinBasicParser.DeffnstmtContext ctx) {
-        var variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
+        VariableName variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
 
         ir.getSymbolTable().addVariableOrUDF(variableName,
                 variableName1 -> Variable.of(variableName1, VariableKindHint.DERIVE_FROM_NAME, () -> getCtxString(ctx)),
                 (varId, varEntry, variable) -> {
-                    var udfEntry = (STUDF) varEntry;
-                    var udfState = udfStateMap.get(variable);
+                    STUDF udfEntry = (STUDF) varEntry;
+                    UDFState udfState = udfStateMap.get(variable);
                     for (VariableContext fnParamCtx : ctx.variable()) {
-                        var fnParamInstr = lookupInstruction(fnParamCtx);
+                        Instruction fnParamInstr = lookupInstruction(fnParamCtx);
                         udfEntry.declareParam(fnParamInstr.result);
                     }
 
-                    var exprInstr = lookupInstruction(ctx.expr());
+                    Instruction exprInstr = lookupInstruction(ctx.expr());
                     checkDataTypeMatch(varId, exprInstr.result, () -> getCtxString(ctx));
 
                     // Copy expr to result
@@ -2087,7 +2086,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                             OpCode.GOTO_CALLER, NULL_ID, NULL_ID, NULL_ID
                     );
                     // LABEL postFuncDecl
-                    var labelPostFuncDecl = ir.addInstruction(
+                    Instruction labelPostFuncDecl = ir.addInstruction(
                             sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                             OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
                     );
@@ -2100,17 +2099,17 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             PuffinBasicParser.VarnameContext varnameCtx,
             PuffinBasicParser.VarsuffixContext varsuffixCtx)
     {
-        var varname = varnameCtx.getText();
-        var varsuffix = varsuffixCtx != null ? varsuffixCtx.getText() : null;
-        var dataType = ir.getSymbolTable().getDataTypeFor(varname, varsuffix);
+        String varname = varnameCtx.getText();
+        String varsuffix = varsuffixCtx != null ? varsuffixCtx.getText() : null;
+        PuffinBasicAtomTypeId dataType = ir.getSymbolTable().getDataTypeFor(varname, varsuffix);
         return new VariableName(varname, dataType.getRepr(), dataType);
     }
 
     @Override
     public void enterFunctionbeginstmt(PuffinBasicParser.FunctionbeginstmtContext ctx) {
-        var variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
+        VariableName variableName = getVariableNameFromCtx(ctx.varname(), ctx.varsuffix());
 
-        var udfId = ir.getSymbolTable().addVariableOrUDF(variableName,
+        int udfId = ir.getSymbolTable().addVariableOrUDF(variableName,
                 variableName1 -> Variable.of(variableName1, VariableKindHint.UDF, () -> getCtxString(ctx)),
                 (varId, varEntry, variable) -> {
                     if (currentUdfState != null) {
@@ -2147,13 +2146,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         if (currentUdfState == null) {
             throw new PuffinBasicInternalError("CurrentUDFState not set!");
         }
-        for (var compCtx : ctx.compositetype()) {
+        for (PuffinBasicParser.CompositetypeContext compCtx : ctx.compositetype()) {
             VariableName paramName;
             PuffinBasicType paramType;
             if (compCtx.var1 != null) {
                 // scalar
-                var scalarVarName = compCtx.var1.VARNAME().getText();
-                var scalarAtomTypeId = ir.getSymbolTable().getDataTypeFor(
+                String scalarVarName = compCtx.var1.VARNAME().getText();
+                PuffinBasicAtomTypeId scalarAtomTypeId = ir.getSymbolTable().getDataTypeFor(
                         scalarVarName, compCtx.var2 != null ? compCtx.var2.getText() : null);
                         //PuffinBasicAtomTypeId.lookup(compCtx.var2.getText());
                 paramName = new VariableName(scalarVarName,
@@ -2163,13 +2162,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             } else if (compCtx.LIST() != null) {
                 // list
                 paramName = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
-                final PuffinBasicType itemType;
+                PuffinBasicType itemType;
                 if (compCtx.list1 != null) {
                     // struct
                     itemType = ir.getSymbolTable().getStructType(compCtx.list1.VARNAME().getText());
                 } else if (compCtx.list3 != null) {
                     // array
-                    var atomType = PuffinBasicAtomTypeId.lookup(compCtx.list3.getText());
+                    PuffinBasicAtomTypeId atomType = PuffinBasicAtomTypeId.lookup(compCtx.list3.getText());
                     itemType = new ArrayType(atomType);
                 } else {
                     // scalar data type
@@ -2183,8 +2182,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             } else if (compCtx.DICT() != null) {
                 // dict
                 paramName = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
-                var keyType = new ScalarType(PuffinBasicAtomTypeId.lookup(compCtx.dictk1.getText()));
-                final PuffinBasicType valueType;
+                ScalarType keyType = new ScalarType(PuffinBasicAtomTypeId.lookup(compCtx.dictk1.getText()));
+                PuffinBasicType valueType;
                 if (compCtx.dictv1 != null) {
                     // struct
                     valueType = ir.getSymbolTable().getStructType(compCtx.dictv1.VARNAME().getText());
@@ -2195,16 +2194,16 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 paramType = new DictType(keyType, valueType);
             } else if (compCtx.struct1 != null) {
                 // struct
-                var memberType = compCtx.struct1.VARNAME().getText();
+                String memberType = compCtx.struct1.VARNAME().getText();
                 paramName = new VariableName(compCtx.elem.VARNAME().getText(), null, COMPOSITE);
                 paramType = ir.getSymbolTable().getStructType(memberType);
             } else if (compCtx.DIM() != null) {
                 // array
-                var arrayName = compCtx.elem.VARNAME().getText();
-                var arrayAtomType = ir.getSymbolTable().getDataTypeFor(arrayName,
+                String arrayName = compCtx.elem.VARNAME().getText();
+                PuffinBasicAtomTypeId arrayAtomType = ir.getSymbolTable().getDataTypeFor(arrayName,
                         compCtx.elemsuffix != null ? compCtx.elemsuffix.getText() : null);
                 IntList dims = new IntArrayList(compCtx.DECIMAL().size());
-                for (var dimStrNode : compCtx.DECIMAL()) {
+                for (TerminalNode dimStrNode : compCtx.DECIMAL()) {
                     dims.add(Numbers.parseInt32(dimStrNode.getText(), () -> getCtxString(ctx)));
                 }
                 paramName = new VariableName(arrayName, arrayAtomType.getRepr(), arrayAtomType);
@@ -2218,7 +2217,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 );
             }
 
-            var paramId = ir.getSymbolTable().addVariableOrUDF(
+            int paramId = ir.getSymbolTable().addVariableOrUDF(
                     paramName,
                     variableName1 -> new Variable(variableName1, paramType),
                     (varId, varEntry, variable) -> {}
@@ -2236,9 +2235,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                     "Function return called without function begin!"
             );
         }
-        var udfId = currentUdfState.udfId;
+        int udfId = currentUdfState.udfId;
 
-        var returnInstr = lookupInstruction(ctx.expr());
+        Instruction returnInstr = lookupInstruction(ctx.expr());
         checkDataTypeMatch(udfId, returnInstr.result, () -> getCtxString(ctx));
 
         // Copy expr to result
@@ -2268,7 +2267,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         // Pop declaration scope
         ir.getSymbolTable().popScope();
         // LABEL gotoCaller
-        var labelGotocaller = ir.addInstruction(
+        Instruction labelGotocaller = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
         );
@@ -2278,7 +2277,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 OpCode.GOTO_CALLER, NULL_ID, NULL_ID, NULL_ID
         );
         // LABEL postFuncDecl
-        var labelPostFuncDecl = ir.addInstruction(
+        Instruction labelPostFuncDecl = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
         );
@@ -2305,7 +2304,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void enterWhilestmt(PuffinBasicParser.WhilestmtContext ctx) {
-        var whileLoopState = new WhileLoopState();
+        WhileLoopState whileLoopState = new WhileLoopState();
         // LABEL beforeWhile
         whileLoopState.labelBeforeWhile = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -2316,13 +2315,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitWhilestmt(PuffinBasicParser.WhilestmtContext ctx) {
-        var whileLoopState = whileLoopStateList.getLast();
+        WhileLoopState whileLoopState = whileLoopStateList.getLast();
 
         // expr()
-        var expr = lookupInstruction(ctx.expr());
+        Instruction expr = lookupInstruction(ctx.expr());
 
         // NOT expr()
-        var notExpr = ir.addInstruction(
+        Instruction notExpr = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.NOT, expr.result, NULL_ID, ir.getSymbolTable().addTmp(INT64, e -> {})
         );
@@ -2342,13 +2341,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                     getCtxString(ctx),
                     "Wend without while");
         }
-        var whileLoopState = whileLoopStateList.removeLast();
+        WhileLoopState whileLoopState = whileLoopStateList.removeLast();
         // GOTO LABEL beforeWhile
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.GOTO_LABEL, whileLoopState.labelBeforeWhile.op1, NULL_ID, NULL_ID);
         // LABEL afterWend
-        var labelAfterWend = ir.addInstruction(
+        Instruction labelAfterWend = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
         );
@@ -2358,7 +2357,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @NotNull
     private PuffinBasicIR.OpCode getLTOpCode(PuffinBasicAtomTypeId dt1, PuffinBasicAtomTypeId dt2) {
-        final OpCode opCode;
+        OpCode opCode;
         if (dt1 == STRING && dt2 == STRING) {
             opCode = OpCode.LTSTR;
         } else {
@@ -2377,7 +2376,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @NotNull
     private PuffinBasicIR.OpCode getGTOpCode(PuffinBasicAtomTypeId dt1, PuffinBasicAtomTypeId dt2) {
-        final OpCode opCode;
+        OpCode opCode;
         if (dt1 == STRING && dt2 == STRING) {
             opCode = OpCode.GTSTR;
         } else {
@@ -2396,7 +2395,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @NotNull
     private PuffinBasicIR.OpCode getGEOpCode(PuffinBasicAtomTypeId dt1, PuffinBasicAtomTypeId dt2) {
-        final OpCode opCode;
+        OpCode opCode;
         if (dt1 == STRING && dt2 == STRING) {
             opCode = OpCode.GESTR;
         } else {
@@ -2415,31 +2414,31 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitForstmt(PuffinBasicParser.ForstmtContext ctx) {
-        var varInstr = lookupInstruction(ctx.variable());
-        var init = lookupInstruction(ctx.expr(0));
-        var end = lookupInstruction(ctx.expr(1));
+        Instruction varInstr = lookupInstruction(ctx.variable());
+        Instruction init = lookupInstruction(ctx.expr(0));
+        Instruction end = lookupInstruction(ctx.expr(1));
         Types.assertNumeric(ir.getSymbolTable().get(init.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         Types.assertNumeric(ir.getSymbolTable().get(end.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
 
-        var forLoopState = new ForLoopState();
-        var stVariable = (STVariable) ir.getSymbolTable().get(varInstr.result);
+        ForLoopState forLoopState = new ForLoopState();
+        STVariable stVariable = (STVariable) ir.getSymbolTable().get(varInstr.result);
         forLoopState.variable = stVariable.getVariable();
 
         // stepCopy = step or 1 (default)
         Instruction stepCopy;
         if (ctx.expr(2) != null) {
-            var step = lookupInstruction(ctx.expr(2));
+            Instruction step = lookupInstruction(ctx.expr(2));
             Types.assertNumeric(ir.getSymbolTable().get(step.result).getType().getAtomTypeId(),
                     () -> getCtxString(ctx));
-            var tmpStep = ir.getSymbolTable().addTmpCompatibleWith(step.result);
+            int tmpStep = ir.getSymbolTable().addTmpCompatibleWith(step.result);
             stepCopy = ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.COPY, step.result, tmpStep, tmpStep
             );
         } else {
-            var tmpStep = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(1));
+            int tmpStep = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(1));
             stepCopy = ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.VALUE, tmpStep, NULL_ID, tmpStep
@@ -2451,14 +2450,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 OpCode.ASSIGN, init.result, varInstr.result, varInstr.result
         );
         // endCopy=end
-        var tmpEnd = ir.getSymbolTable().addTmpCompatibleWith(end.result);
-        var endCopy = ir.addInstruction(
+        int tmpEnd = ir.getSymbolTable().addTmpCompatibleWith(end.result);
+        Instruction endCopy = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ASSIGN, end.result, tmpEnd, tmpEnd
         );
 
         // GOTO LABEL CHECK
-        var gotoLabelCheck = ir.addInstruction(
+        Instruction gotoLabelCheck = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.GOTO_LABEL, ir.getSymbolTable().addGotoTarget(), NULL_ID, NULL_ID
         );
@@ -2471,8 +2470,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         );
 
         // Add step
-        var tmpAdd = ir.getSymbolTable().addTmpCompatibleWith(varInstr.result);
-        final OpCode addOpCode;
+        int tmpAdd = ir.getSymbolTable().addTmpCompatibleWith(varInstr.result);
+        OpCode addOpCode;
         switch (stVariable.getType().getAtomTypeId()) {
             case INT32:
                 addOpCode = OpCode.ADDI32;
@@ -2499,14 +2498,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         );
 
         // CHECK
-        // If (step >= 0 and var > end) or (step < 0 and var < end) GOTO after "next"
+        // If (step >= 0 and int > end) or (step < 0 and int < end) GOTO after "next"
         // step >= 0
-        var labelCheck = ir.addInstruction(
+        Instruction labelCheck = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
         );
-        var zero = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(0));
-        var t1 = ir.getSymbolTable().addTmp(INT32, e -> {});
+        int zero = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(0));
+        int t1 = ir.getSymbolTable().addTmp(INT32, e -> {});
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 getGEOpCode(ir.getSymbolTable().get(stepCopy.result).getType().getAtomTypeId(), INT32),
@@ -2514,42 +2513,42 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         );
         // Patch GOTO LABEL Check
         gotoLabelCheck.patchOp1(labelCheck.op1);
-        // var > end
-        var t2 = ir.getSymbolTable().addTmp(INT32, e -> {});
+        // int > end
+        int t2 = ir.getSymbolTable().addTmp(INT32, e -> {});
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 getGTOpCode(ir.getSymbolTable().get(varInstr.result).getType().getAtomTypeId(),
                         ir.getSymbolTable().get(endCopy.result).getType().getAtomTypeId()),
                 varInstr.result, endCopy.result, t2
         );
-        // (step >= 0 and var > end)
-        var t3 = ir.getSymbolTable().addTmp(INT32, e -> {});
+        // (step >= 0 and int > end)
+        int t3 = ir.getSymbolTable().addTmp(INT32, e -> {});
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.AND, t1, t2, t3
         );
         // step < 0
-        var t4 = ir.getSymbolTable().addTmp(INT32, e -> {});
+        int t4 = ir.getSymbolTable().addTmp(INT32, e -> {});
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 getLTOpCode(ir.getSymbolTable().get(stepCopy.result).getType().getAtomTypeId(), INT32),
                 stepCopy.result, zero, t4
         );
-        // var < end
-        var t5 = ir.getSymbolTable().addTmp(INT32, e -> {});
+        // int < end
+        int t5 = ir.getSymbolTable().addTmp(INT32, e -> {});
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 getLTOpCode(ir.getSymbolTable().get(varInstr.result).getType().getAtomTypeId(),
                         ir.getSymbolTable().get(endCopy.result).getType().getAtomTypeId()),
                 varInstr.result, endCopy.result, t5
         );
-        // (step < 0 and var < end)
-        var t6 = ir.getSymbolTable().addTmp(INT32, e -> {});
+        // (step < 0 and int < end)
+        int t6 = ir.getSymbolTable().addTmp(INT32, e -> {});
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.AND, t4, t5, t6
         );
-        var t7 = ir.getSymbolTable().addTmp(INT32, e -> {});
+        int t7 = ir.getSymbolTable().addTmp(INT32, e -> {});
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.OR, t3, t6, t7
@@ -2578,7 +2577,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 );
             }
         } else {
-            for (var varCtx : ctx.variable()) {
+            for (PuffinBasicParser.VariableContext varCtx : ctx.variable()) {
                 if (varCtx.leafvariable() == null) {
                     throw new PuffinBasicSemanticError(
                             BAD_ARGUMENT,
@@ -2586,17 +2585,17 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                             "Bad variable!"
                     );
                 }
-                var varname = varCtx.leafvariable().varname().VARNAME().getText();
-                var varsuffix = varCtx.leafvariable().varsuffix() != null
+                String varname = varCtx.leafvariable().varname().VARNAME().getText();
+                String varsuffix = varCtx.leafvariable().varsuffix() != null
                         ? varCtx.leafvariable().varsuffix().getText() : null;
-                var dataType = ir.getSymbolTable().getDataTypeFor(varname, varsuffix);
-                var variableName = new VariableName(varname, dataType.getRepr(), dataType);
+                PuffinBasicAtomTypeId dataType = ir.getSymbolTable().getDataTypeFor(varname, varsuffix);
+                VariableName variableName = new VariableName(varname, dataType.getRepr(), dataType);
 
                 int id = ir.getSymbolTable().addVariableOrUDF(
                         variableName,
                         variableName1 -> Variable.of(variableName1, VariableKindHint.DERIVE_FROM_NAME, () -> getCtxString(ctx)),
                         (id1, e1, v1) -> {});
-                var variable = ((STVariable) ir.getSymbolTable().get(id)).getVariable();
+                Variable variable = ((STVariable) ir.getSymbolTable().get(id)).getVariable();
 
                 if (forLoopStateList.isEmpty()) {
                     throw new PuffinBasicSemanticError(
@@ -2606,7 +2605,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                     );
                 }
 
-                var state = forLoopStateList.removeLast();
+                ForLoopState state = forLoopStateList.removeLast();
                 if (state.variable.equals(variable)) {
                     states.add(state);
                 } else {
@@ -2627,7 +2626,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             );
 
             // LABEL afterNext
-            var labelAfterNext = ir.addInstruction(
+            Instruction labelAfterNext = ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
             );
@@ -2653,10 +2652,10 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitIfThenElse(PuffinBasicParser.IfThenElseContext ctx) {
-        var ifState = nodeToIfState.get(ctx);
+        IfState ifState = nodeToIfState.get(ctx);
         boolean noElseStmt = ifState.labelBeforeElse == null;
 
-        var condition = lookupInstruction(ctx.expr());
+        Instruction condition = lookupInstruction(ctx.expr());
         // Patch IF true: condition
         ifState.gotoIfConditionTrue.patchOp1(condition.result);
         // Patch IF true: GOTO labelBeforeThen
@@ -2673,7 +2672,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void enterThen(PuffinBasicParser.ThenContext ctx) {
-        var ifState = nodeToIfState.get(ctx.getParent());
+        IfState ifState = nodeToIfState.get(ctx.getParent());
         // IF condition is true, GOTO labelBeforeThen
         ifState.gotoIfConditionTrue = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -2695,14 +2694,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         // Add instruction for:
         // THEN GOTO linenum | THEN linenum
         if (ctx.linenum() != null) {
-            var gotoLinenum = parseLinenum(ctx.linenum().getText());
+            int gotoLinenum = parseLinenum(ctx.linenum().getText());
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.GOTO_LINENUM, getGotoLineNumberOp1(gotoLinenum), NULL_ID, NULL_ID
             );
         }
 
-        var ifState = nodeToIfState.get(ctx.getParent());
+        IfState ifState = nodeToIfState.get(ctx.getParent());
         // GOTO labelAfterThen|labelAfterElse
         ifState.gotoFromThenAfterIf = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -2717,7 +2716,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void enterElsestmt(PuffinBasicParser.ElsestmtContext ctx) {
-        var ifState = nodeToIfState.get(ctx.getParent());
+        IfState ifState = nodeToIfState.get(ctx.getParent());
         ifState.labelBeforeElse = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
@@ -2729,13 +2728,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
         // Add instruction for:
         // ELSE linenum
         if (ctx.linenum() != null) {
-            var gotoLinenum = parseLinenum(ctx.linenum().getText());
+            int gotoLinenum = parseLinenum(ctx.linenum().getText());
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.GOTO_LINENUM, getGotoLineNumberOp1(gotoLinenum), NULL_ID, NULL_ID
             );
         }
-        var ifState = nodeToIfState.get(ctx.getParent());
+        IfState ifState = nodeToIfState.get(ctx.getParent());
         ifState.labelAfterElse = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
@@ -2752,7 +2751,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void enterIfthenbeginstmt(PuffinBasicParser.IfthenbeginstmtContext ctx) {
-        var ifState = new IfState();
+        IfState ifState = new IfState();
         nodeToIfState.put(ctx, ifState);
         ifStateList.add(ifState);
     }
@@ -2769,8 +2768,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitIfthenbeginstmt(PuffinBasicParser.IfthenbeginstmtContext ctx) {
-        var ifState = nodeToIfState.get(ctx);
-        var condition = lookupInstruction(ctx.expr());
+        IfState ifState = nodeToIfState.get(ctx);
+        Instruction condition = lookupInstruction(ctx.expr());
 
         // IF condition is true, GOTO labelBeforeThen
         ifState.gotoIfConditionTrue = ir.addInstruction(
@@ -2800,7 +2799,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                     "ELSE BEGIN without IF THEN BEGIN"
             );
         }
-        var ifState = ifStateList.getLast();
+        IfState ifState = ifStateList.getLast();
         // GOTO labelAfterThen|labelAfterElse
         ifState.gotoFromThenAfterIf = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -2826,7 +2825,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                     "ENDIF without IF THEN BEGIN"
             );
         }
-        var ifState = ifStateList.removeLast();
+        IfState ifState = ifStateList.removeLast();
         boolean noElseStmt = ifState.labelBeforeElse == null;
 
         if (noElseStmt) {
@@ -2861,8 +2860,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitGosubstmt(PuffinBasicParser.GosubstmtContext ctx) {
-        var gotoLinenum = parseLinenum(ctx.linenum().getText());
-        var pushReturnLabel = ir.addInstruction(
+        int gotoLinenum = parseLinenum(ctx.linenum().getText());
+        Instruction pushReturnLabel = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.PUSH_RETLABEL, ir.getSymbolTable().addGotoTarget(), NULL_ID, NULL_ID
         );
@@ -2870,7 +2869,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.GOTO_LINENUM, getGotoLineNumberOp1(gotoLinenum), NULL_ID, NULL_ID
         );
-        var labelReturn = ir.addInstruction(
+        Instruction labelReturn = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
         );
@@ -2879,8 +2878,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitGosublabelstmt(PuffinBasicParser.GosublabelstmtContext ctx) {
-        var gotoLabel = ir.getSymbolTable().addLabel(ctx.string().STRING().getText());
-        var pushReturnLabel = ir.addInstruction(
+        int gotoLabel = ir.getSymbolTable().addLabel(ctx.string().STRING().getText());
+        Instruction pushReturnLabel = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.PUSH_RETLABEL, ir.getSymbolTable().addGotoTarget(), NULL_ID, NULL_ID
         );
@@ -2888,7 +2887,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.GOTO_LABEL, gotoLabel, NULL_ID, NULL_ID
         );
-        var labelReturn = ir.addInstruction(
+        Instruction labelReturn = ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(), NULL_ID, NULL_ID
         );
@@ -2905,7 +2904,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitGotostmt(PuffinBasicParser.GotostmtContext ctx) {
-        var gotoLinenum = parseLinenum(ctx.linenum().getText());
+        int gotoLinenum = parseLinenum(ctx.linenum().getText());
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.GOTO_LINENUM, getGotoLineNumberOp1(gotoLinenum), NULL_ID, NULL_ID
@@ -2914,7 +2913,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitGotolabelstmt(PuffinBasicParser.GotolabelstmtContext ctx) {
-        var gotoLabel = ir.getSymbolTable().addLabel(ctx.string().STRING().getText());
+        int gotoLabel = ir.getSymbolTable().addLabel(ctx.string().STRING().getText());
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.GOTO_LABEL, gotoLabel, NULL_ID, NULL_ID
@@ -2923,10 +2922,10 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitSwapstmt(PuffinBasicParser.SwapstmtContext ctx) {
-        var var1 = lookupInstruction(ctx.variable(0));
-        var var2 = lookupInstruction(ctx.variable(1));
-        var dt1 = ir.getSymbolTable().get(var1.result).getType().getAtomTypeId();
-        var dt2 = ir.getSymbolTable().get(var2.result).getType().getAtomTypeId();
+        Instruction var1 = lookupInstruction(ctx.variable(0));
+        Instruction var2 = lookupInstruction(ctx.variable(1));
+        PuffinBasicAtomTypeId dt1 = ir.getSymbolTable().get(var1.result).getType().getAtomTypeId();
+        PuffinBasicAtomTypeId dt2 = ir.getSymbolTable().get(var2.result).getType().getAtomTypeId();
         if (dt1 != dt2) {
             throw new PuffinBasicSemanticError(
                     DATA_TYPE_MISMATCH,
@@ -2942,12 +2941,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitOpen1stmt(PuffinBasicParser.Open1stmtContext ctx) {
-        var filenameInstr = lookupInstruction(ctx.filename);
-        var fileOpenMode = getFileOpenMode(ctx.filemode1());
-        var accessMode = getFileAccessMode(null);
-        var lockMode = getLockMode(null);
-        var fileNumber = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
-        var recordLenInstrId = ctx.reclen != null
+        Instruction filenameInstr = lookupInstruction(ctx.filename);
+        FileOpenMode fileOpenMode = getFileOpenMode(ctx.filemode1());
+        FileAccessMode accessMode = getFileAccessMode(null);
+        LockMode lockMode = getLockMode(null);
+        int fileNumber = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
+        int recordLenInstrId = ctx.reclen != null
                 ? lookupInstruction(ctx.reclen).result
                 : ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(DEFAULT_RECORD_LEN));
 
@@ -2984,12 +2983,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitOpen2stmt(PuffinBasicParser.Open2stmtContext ctx) {
-        var filenameInstr = lookupInstruction(ctx.filename);
-        var fileOpenMode = getFileOpenMode(ctx.filemode2());
-        var accessMode = getFileAccessMode(ctx.access());
-        var lockMode = getLockMode(ctx.lock());
-        var fileNumber = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
-        var recordLenInstrId = ctx.reclen != null
+        Instruction filenameInstr = lookupInstruction(ctx.filename);
+        FileOpenMode fileOpenMode = getFileOpenMode(ctx.filemode2());
+        FileAccessMode accessMode = getFileAccessMode(ctx.access());
+        LockMode lockMode = getLockMode(ctx.lock());
+        int fileNumber = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
+        int recordLenInstrId = ctx.reclen != null
                 ? lookupInstruction(ctx.reclen).result
                 : ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(DEFAULT_RECORD_LEN));
 
@@ -3026,7 +3025,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitClosestmt(PuffinBasicParser.ClosestmtContext ctx) {
-        var fileNumbers = ctx.DECIMAL().stream().map(
+        List<Integer> fileNumbers = ctx.DECIMAL().stream().map(
             fileNumberCtx -> Numbers.parseInt32(fileNumberCtx.getText(), () -> getCtxString(ctx))
         ).collect(Collectors.toList());
         if (fileNumbers.isEmpty()) {
@@ -3051,14 +3050,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitFieldstmt(PuffinBasicParser.FieldstmtContext ctx) {
-        var fileNumberInstr = lookupInstruction(ctx.filenum);
+        Instruction fileNumberInstr = lookupInstruction(ctx.filenum);
         Types.assertNumeric(ir.getSymbolTable().get(fileNumberInstr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
 
-        var numEntries = ctx.variable().size();
+        int numEntries = ctx.variable().size();
         for (int i = 0; i < numEntries; i++) {
-            var recordPartLen = Numbers.parseInt32(ctx.DECIMAL(i).getText(), () -> getCtxString(ctx));
-            var varInstr = lookupInstruction(ctx.variable(i));
+            int recordPartLen = Numbers.parseInt32(ctx.DECIMAL(i).getText(), () -> getCtxString(ctx));
+            Instruction varInstr = lookupInstruction(ctx.variable(i));
             assertVariable(ir.getSymbolTable().get(varInstr.result), () -> getCtxString(ctx));
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -3089,7 +3088,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private void assert1DArray(STVariable variableEntry, Supplier<String> line) {
-        var variable = variableEntry.getVariable();
+        Variable variable = variableEntry.getVariable();
         if (!variable.isArray() || !((ArrayType) variable.getType()).isNDArray(1)) {
             throw new PuffinBasicSemanticError(
                     BAD_ARGUMENT,
@@ -3100,7 +3099,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private void assert2DArray(STVariable variableEntry, Supplier<String> line) {
-        var variable = variableEntry.getVariable();
+        Variable variable = variableEntry.getVariable();
         if (!variable.isArray() || !((ArrayType) variable.getType()).isNDArray(2)) {
             throw new PuffinBasicSemanticError(
                     BAD_ARGUMENT,
@@ -3122,8 +3121,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitPutstmt(PuffinBasicParser.PutstmtContext ctx) {
-        var fileNumberInstr = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
-        final int exprId;
+        int fileNumberInstr = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
+        int exprId;
         if (ctx.expr() != null) {
             exprId = lookupInstruction(ctx.expr()).result;
             Types.assertNumeric(ir.getSymbolTable().get(exprId).getType().getAtomTypeId(),
@@ -3142,12 +3141,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitMiddlrstmt(PuffinBasicParser.MiddlrstmtContext ctx) {
-        var varInstr = lookupInstruction(ctx.variable());
-        var nInstr = lookupInstruction(ctx.expr(0));
-        var mInstrId = ctx.expr().size() == 3
+        Instruction varInstr = lookupInstruction(ctx.variable());
+        Instruction nInstr = lookupInstruction(ctx.expr(0));
+        int mInstrId = ctx.expr().size() == 3
                 ? lookupInstruction(ctx.expr(1)).result
                 : ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(-1));
-        var replacement = ctx.expr().size() == 3
+        Instruction replacement = ctx.expr().size() == 3
                 ? lookupInstruction(ctx.expr(2))
                 : lookupInstruction(ctx.expr(1));
 
@@ -3172,8 +3171,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitGetstmt(PuffinBasicParser.GetstmtContext ctx) {
-        var fileNumberInstr = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
-        final int exprId;
+        int fileNumberInstr = Numbers.parseInt32(ctx.filenum.getText(), () -> getCtxString(ctx));
+        int exprId;
         if (ctx.expr() != null) {
             exprId = lookupInstruction(ctx.expr()).result;
             Types.assertNumeric(ir.getSymbolTable().get(exprId).getType().getAtomTypeId(),
@@ -3192,7 +3191,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitRandomizestmt(PuffinBasicParser.RandomizestmtContext ctx) {
-        var exprId = lookupInstruction(ctx.expr()).result;
+        int exprId = lookupInstruction(ctx.expr()).result;
         Types.assertNumeric(ir.getSymbolTable().get(exprId).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         ir.addInstruction(
@@ -3236,10 +3235,10 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitLsetstmt(PuffinBasicParser.LsetstmtContext ctx) {
-        var varInstr = lookupInstruction(ctx.variable());
-        var exprInstr = lookupInstruction(ctx.expr());
+        Instruction varInstr = lookupInstruction(ctx.variable());
+        Instruction exprInstr = lookupInstruction(ctx.expr());
 
-        var varEntry = ir.getSymbolTable().get(varInstr.result);
+        STEntry varEntry = ir.getSymbolTable().get(varInstr.result);
         assertVariable(varEntry, () -> getCtxString(ctx));
         Types.assertString(varEntry.getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3254,10 +3253,10 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitRsetstmt(PuffinBasicParser.RsetstmtContext ctx) {
-        var varInstr = lookupInstruction(ctx.variable());
-        var exprInstr = lookupInstruction(ctx.expr());
+        Instruction varInstr = lookupInstruction(ctx.variable());
+        Instruction exprInstr = lookupInstruction(ctx.expr());
 
-        var varEntry = ir.getSymbolTable().get(varInstr.result);
+        STEntry varEntry = ir.getSymbolTable().get(varInstr.result);
         assertVariable(varEntry, () -> getCtxString(ctx));
         Types.assertString(varEntry.getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3272,8 +3271,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitInputstmt(PuffinBasicParser.InputstmtContext ctx) {
-        for (var varCtx : ctx.variable()) {
-            var varInstr = lookupInstruction(varCtx);
+        for (PuffinBasicParser.VariableContext varCtx : ctx.variable()) {
+            Instruction varInstr = lookupInstruction(varCtx);
             assertVariable(ir.getSymbolTable().get(varInstr.result),
                     () -> getCtxString(ctx));
             ir.addInstruction(
@@ -3298,8 +3297,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitInputhashstmt(PuffinBasicParser.InputhashstmtContext ctx) {
-        for (var varCtx : ctx.variable()) {
-            var varInstr = lookupInstruction(varCtx);
+        for (PuffinBasicParser.VariableContext varCtx : ctx.variable()) {
+            Instruction varInstr = lookupInstruction(varCtx);
             assertVariable(ir.getSymbolTable().get(varInstr.result),
                     () -> getCtxString(ctx));
             ir.addInstruction(
@@ -3308,7 +3307,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             );
         }
 
-        var fileNumInstr = lookupInstruction(ctx.filenum);
+        Instruction fileNumInstr = lookupInstruction(ctx.filenum);
         Types.assertNumeric(ir.getSymbolTable().get(fileNumInstr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         ir.addInstruction(
@@ -3319,7 +3318,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitLineinputstmt(PuffinBasicParser.LineinputstmtContext ctx) {
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction varInstr = lookupInstruction(ctx.variable());
         assertVariable(ir.getSymbolTable().get(varInstr.result),
                 () -> getCtxString(ctx));
         ir.addInstruction(
@@ -3344,7 +3343,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitLineinputhashstmt(PuffinBasicParser.LineinputhashstmtContext ctx) {
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction varInstr = lookupInstruction(ctx.variable());
         assertVariable(ir.getSymbolTable().get(varInstr.result),
                 () -> getCtxString(ctx));
         ir.addInstruction(
@@ -3352,7 +3351,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 OpCode.PARAM1, varInstr.result, NULL_ID, NULL_ID
         );
 
-        var fileNumInstr = lookupInstruction(ctx.filenum);
+        Instruction fileNumInstr = lookupInstruction(ctx.filenum);
         Types.assertNumeric(ir.getSymbolTable().get(fileNumInstr.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
 
@@ -3369,7 +3368,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitWritehashstmt(PuffinBasicParser.WritehashstmtContext ctx) {
-        var fileNumInstr = lookupInstruction(ctx.filenum);
+        Instruction fileNumInstr = lookupInstruction(ctx.filenum);
         handleWritestmt(ctx, ctx.expr(), fileNumInstr);
     }
 
@@ -3379,14 +3378,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             @Nullable Instruction fileNumber) {
         // if fileNumber != null, skip first instruction
         for (int i = fileNumber == null ? 0 : 1; i < exprs.size(); i++) {
-            var exprCtx = exprs.get(i);
-            var exprInstr = lookupInstruction(exprCtx);
+            PuffinBasicParser.ExprContext exprCtx = exprs.get(i);
+            Instruction exprInstr = lookupInstruction(exprCtx);
             ir.addInstruction(
                     sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                     OpCode.WRITE, exprInstr.result, NULL_ID, NULL_ID
             );
             if (i + 1 < exprs.size()) {
-                var commaId = ir.getSymbolTable().addTmp(STRING,
+                int commaId = ir.getSymbolTable().addTmp(STRING,
                         entry -> entry.getValue().setString(","));
                 ir.addInstruction(
                         sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -3395,14 +3394,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
             }
         }
 
-        var newlineId = ir.getSymbolTable().addTmp(STRING,
+        int newlineId = ir.getSymbolTable().addTmp(STRING,
                 entry -> entry.getValue().setString(System.lineSeparator()));
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.PRINT, newlineId, NULL_ID, NULL_ID
         );
 
-        final int fileNumberId;
+        int fileNumberId;
         if (fileNumber != null) {
             Types.assertNumeric(ir.getSymbolTable().get(fileNumber.result).getType().getAtomTypeId(),
                     () -> getCtxString(ctx));
@@ -3418,8 +3417,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitReadstmt(PuffinBasicParser.ReadstmtContext ctx) {
-        for (var varCtx : ctx.variable()) {
-            var varInstr = lookupInstruction(varCtx);
+        for (PuffinBasicParser.VariableContext varCtx : ctx.variable()) {
+            Instruction varInstr = lookupInstruction(varCtx);
             assertVariable(ir.getSymbolTable().get(varInstr.result),
                     () -> getCtxString(ctx));
             ir.addInstruction(
@@ -3439,14 +3438,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitDatastmt(PuffinBasicParser.DatastmtContext ctx) {
-        var children = ctx.children;
+        List<ParseTree> children = ctx.children;
         for (int i = 1; i < children.size(); i += 2) {
-            var child = children.get(i);
+            ParseTree child = children.get(i);
             int valueId;
             if (child instanceof PuffinBasicParser.NumberContext) {
                 valueId = lookupInstruction((PuffinBasicParser.NumberContext) child).result;
             } else {
-                var text = unquote(child.getText());
+                String text = unquote(child.getText());
                 valueId = ir.getSymbolTable().addTmp(STRING, e -> e.getValue().setString(text));
             }
             ir.addInstruction(
@@ -3458,7 +3457,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitLabelstmt(PuffinBasicParser.LabelstmtContext ctx) {
-        var label = ctx.string().STRING().getText();
+        String label = ctx.string().STRING().getText();
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.LABEL, ir.getSymbolTable().addLabel(label), NULL_ID, NULL_ID
@@ -3471,13 +3470,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitScreenstmt(PuffinBasicParser.ScreenstmtContext ctx) {
         assertGraphics();
 
-        var title = lookupInstruction(ctx.expr(0));
-        var w = lookupInstruction(ctx.expr(1));
-        var h = lookupInstruction(ctx.expr(2));
-        var iw = ctx.expr().size() == 5 ? lookupInstruction(ctx.expr(3)) : w;
-        var ih = ctx.expr().size() == 5 ? lookupInstruction(ctx.expr(4)) : h;
-        var manualRepaintFlag = ctx.mr != null;
-        var doubleBufferFlag = ctx.db != null;
+        Instruction title = lookupInstruction(ctx.expr(0));
+        Instruction w = lookupInstruction(ctx.expr(1));
+        Instruction h = lookupInstruction(ctx.expr(2));
+        Instruction iw = ctx.expr().size() == 5 ? lookupInstruction(ctx.expr(3)) : w;
+        Instruction ih = ctx.expr().size() == 5 ? lookupInstruction(ctx.expr(4)) : h;
+        boolean manualRepaintFlag = ctx.mr != null;
+        boolean doubleBufferFlag = ctx.db != null;
 
         Types.assertString(ir.getSymbolTable().get(title.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3498,9 +3497,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.PARAM2, iw.result, ih.result, NULL_ID
         );
-        var repaint = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(
+        int repaint = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(
                 manualRepaintFlag ? 0 : -1));
-        var doubleBuffer = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(
+        int doubleBuffer = ir.getSymbolTable().addTmp(INT32, e -> e.getValue().setInt32(
                 doubleBufferFlag ? -1 : 0));
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
@@ -3525,13 +3524,13 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitCirclestmt(PuffinBasicParser.CirclestmtContext ctx) {
         assertGraphics();
 
-        var x = lookupInstruction(ctx.x);
-        var y = lookupInstruction(ctx.y);
-        var r1 = lookupInstruction(ctx.r1);
-        var r2 = lookupInstruction(ctx.r2);
-        var s = ctx.s != null ? lookupInstruction(ctx.s) : null;
-        var e = ctx.e != null ? lookupInstruction(ctx.e) : null;
-        var fill = ctx.fill != null ? lookupInstruction(ctx.fill) : null;
+        Instruction x = lookupInstruction(ctx.x);
+        Instruction y = lookupInstruction(ctx.y);
+        Instruction r1 = lookupInstruction(ctx.r1);
+        Instruction r2 = lookupInstruction(ctx.r2);
+        Instruction s = ctx.s != null ? lookupInstruction(ctx.s) : null;
+        Instruction e = ctx.e != null ? lookupInstruction(ctx.e) : null;
+        Instruction fill = ctx.fill != null ? lookupInstruction(ctx.fill) : null;
         Types.assertNumeric(ir.getSymbolTable().get(x.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         Types.assertNumeric(ir.getSymbolTable().get(y.result).getType().getAtomTypeId(),
@@ -3580,10 +3579,10 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitLinestmt(PuffinBasicParser.LinestmtContext ctx) {
         assertGraphics();
 
-        var x1 = lookupInstruction(ctx.x1);
-        var y1 = lookupInstruction(ctx.y1);
-        var x2 = lookupInstruction(ctx.x2);
-        var y2 = lookupInstruction(ctx.y2);
+        Instruction x1 = lookupInstruction(ctx.x1);
+        Instruction y1 = lookupInstruction(ctx.y1);
+        Instruction x2 = lookupInstruction(ctx.x2);
+        Instruction y2 = lookupInstruction(ctx.y2);
 
         Types.assertNumeric(ir.getSymbolTable().get(x1.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3616,9 +3615,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitColorstmt(PuffinBasicParser.ColorstmtContext ctx) {
-        var r = lookupInstruction(ctx.r);
-        var g = lookupInstruction(ctx.g);
-        var b = lookupInstruction(ctx.b);
+        Instruction r = lookupInstruction(ctx.r);
+        Instruction g = lookupInstruction(ctx.g);
+        Instruction b = lookupInstruction(ctx.b);
         Types.assertNumeric(ir.getSymbolTable().get(r.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         Types.assertNumeric(ir.getSymbolTable().get(g.result).getType().getAtomTypeId(),
@@ -3639,11 +3638,11 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitPaintstmt(PuffinBasicParser.PaintstmtContext ctx) {
         assertGraphics();
 
-        var x = lookupInstruction(ctx.x);
-        var y = lookupInstruction(ctx.y);
-        var r = lookupInstruction(ctx.r);
-        var g = lookupInstruction(ctx.g);
-        var b = lookupInstruction(ctx.b);
+        Instruction x = lookupInstruction(ctx.x);
+        Instruction y = lookupInstruction(ctx.y);
+        Instruction r = lookupInstruction(ctx.r);
+        Instruction g = lookupInstruction(ctx.g);
+        Instruction b = lookupInstruction(ctx.b);
 
         Types.assertNumeric(ir.getSymbolTable().get(x.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3674,8 +3673,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitPsetstmt(PuffinBasicParser.PsetstmtContext ctx) {
         assertGraphics();
 
-        var x = lookupInstruction(ctx.x);
-        var y = lookupInstruction(ctx.y);
+        Instruction x = lookupInstruction(ctx.x);
+        Instruction y = lookupInstruction(ctx.y);
 
         int rId = NULL_ID, gId = NULL_ID, bId = NULL_ID;
         if (ctx.r != null) {
@@ -3717,12 +3716,12 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitGraphicsgetstmt(PuffinBasicParser.GraphicsgetstmtContext ctx) {
         assertGraphics();
 
-        var x1 = lookupInstruction(ctx.x1);
-        var y1 = lookupInstruction(ctx.y1);
-        var x2 = lookupInstruction(ctx.x2);
-        var y2 = lookupInstruction(ctx.y2);
-        var varInstr = lookupInstruction(ctx.variable());
-        final int bufferNumber = ctx.BACK1() != null
+        Instruction x1 = lookupInstruction(ctx.x1);
+        Instruction y1 = lookupInstruction(ctx.y1);
+        Instruction x2 = lookupInstruction(ctx.x2);
+        Instruction y2 = lookupInstruction(ctx.y2);
+        Instruction varInstr = lookupInstruction(ctx.variable());
+        int bufferNumber = ctx.BACK1() != null
                 ? GraphicsUtil.BUFFER_NUM_BACK1
                 : GraphicsUtil.BUFFER_NUM_FRONT;
 
@@ -3757,11 +3756,11 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitGraphicsputstmt(PuffinBasicParser.GraphicsputstmtContext ctx) {
         assertGraphics();
 
-        var x = lookupInstruction(ctx.x);
-        var y = lookupInstruction(ctx.y);
-        var varInstr = lookupInstruction(ctx.variable());
-        var action = ctx.action != null ? lookupInstruction(ctx.action) : null;
-        final int bufferNumber = ctx.FRONT() == null
+        Instruction x = lookupInstruction(ctx.x);
+        Instruction y = lookupInstruction(ctx.y);
+        Instruction varInstr = lookupInstruction(ctx.variable());
+        Instruction action = ctx.action != null ? lookupInstruction(ctx.action) : null;
+        int bufferNumber = ctx.FRONT() == null
                 ? GraphicsUtil.BUFFER_NUM_BACK1
                 : GraphicsUtil.BUFFER_NUM_FRONT;
 
@@ -3799,9 +3798,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitGraphicsbuffercopyhorstmt(PuffinBasicParser.GraphicsbuffercopyhorstmtContext ctx) {
         assertGraphics();
 
-        var srcx = lookupInstruction(ctx.srcx);
-        var dstx = lookupInstruction(ctx.dstx);
-        var w = lookupInstruction(ctx.w);
+        Instruction srcx = lookupInstruction(ctx.srcx);
+        Instruction dstx = lookupInstruction(ctx.dstx);
+        Instruction w = lookupInstruction(ctx.w);
 
         Types.assertNumeric(ir.getSymbolTable().get(srcx.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3824,7 +3823,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitDrawstmt(PuffinBasicParser.DrawstmtContext ctx) {
         assertGraphics();
 
-        var str = lookupInstruction(ctx.expr());
+        Instruction str = lookupInstruction(ctx.expr());
         Types.assertString(ir.getSymbolTable().get(str.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         ir.addInstruction(
@@ -3837,9 +3836,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitFontstmt(PuffinBasicParser.FontstmtContext ctx) {
         assertGraphics();
 
-        var name = lookupInstruction(ctx.name);
-        var style = lookupInstruction(ctx.style);
-        var size = lookupInstruction(ctx.size);
+        Instruction name = lookupInstruction(ctx.name);
+        Instruction style = lookupInstruction(ctx.style);
+        Instruction size = lookupInstruction(ctx.size);
 
         Types.assertString(ir.getSymbolTable().get(style.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3860,9 +3859,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitDrawstrstmt(PuffinBasicParser.DrawstrstmtContext ctx) {
-        var str = lookupInstruction(ctx.str);
-        var x = lookupInstruction(ctx.x);
-        var y = lookupInstruction(ctx.y);
+        Instruction str = lookupInstruction(ctx.str);
+        Instruction x = lookupInstruction(ctx.x);
+        Instruction y = lookupInstruction(ctx.y);
 
         Types.assertNumeric(ir.getSymbolTable().get(x.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3885,8 +3884,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitLoadimgstmt(PuffinBasicParser.LoadimgstmtContext ctx) {
         assertGraphics();
 
-        var path = lookupInstruction(ctx.path);
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction path = lookupInstruction(ctx.path);
+        Instruction varInstr = lookupInstruction(ctx.variable());
 
         Types.assertString(ir.getSymbolTable().get(path.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3903,8 +3902,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitSaveimgstmt(PuffinBasicParser.SaveimgstmtContext ctx) {
         assertGraphics();
 
-        var path = lookupInstruction(ctx.path);
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction path = lookupInstruction(ctx.path);
+        Instruction varInstr = lookupInstruction(ctx.variable());
 
         Types.assertString(ir.getSymbolTable().get(path.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3930,8 +3929,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitLoadwavstmt(PuffinBasicParser.LoadwavstmtContext ctx) {
         assertGraphics();
 
-        var path = lookupInstruction(ctx.path);
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction path = lookupInstruction(ctx.path);
+        Instruction varInstr = lookupInstruction(ctx.variable());
 
         Types.assertString(ir.getSymbolTable().get(path.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
@@ -3948,7 +3947,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitPlaywavstmt(PuffinBasicParser.PlaywavstmtContext ctx) {
         assertGraphics();
 
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction varInstr = lookupInstruction(ctx.variable());
 
         assertVariable(ir.getSymbolTable().get(varInstr.result),
                 () -> getCtxString(ctx));
@@ -3963,7 +3962,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitStopwavstmt(PuffinBasicParser.StopwavstmtContext ctx) {
         assertGraphics();
 
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction varInstr = lookupInstruction(ctx.variable());
 
         assertVariable(ir.getSymbolTable().get(varInstr.result),
                 () -> getCtxString(ctx));
@@ -3978,7 +3977,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     public void exitLoopwavstmt(PuffinBasicParser.LoopwavstmtContext ctx) {
         assertGraphics();
 
-        var varInstr = lookupInstruction(ctx.variable());
+        Instruction varInstr = lookupInstruction(ctx.variable());
 
         assertVariable(ir.getSymbolTable().get(varInstr.result),
                 () -> getCtxString(ctx));
@@ -3991,7 +3990,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitSleepstmt(PuffinBasicParser.SleepstmtContext ctx) {
-        var millis = lookupInstruction(ctx.expr());
+        Instruction millis = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(millis.result).getType().getAtomTypeId(),
                 () -> getCtxString(ctx));
         ir.addInstruction(
@@ -4011,7 +4010,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitArray1dsortstmt(PuffinBasicParser.Array1dsortstmtContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), false);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(), false);
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAY1DSORT, var1Instr.result, NULL_ID, NULL_ID);
@@ -4019,8 +4018,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitArraycopystmt(PuffinBasicParser.ArraycopystmtContext ctx) {
-        var var1Instr = getArrayNdVariableInstruction(ctx, ctx.variable(0));
-        var var2Instr = getArrayNdVariableInstruction(ctx, ctx.variable(1));
+        Instruction var1Instr = getArrayNdVariableInstruction(ctx, ctx.variable(0));
+        Instruction var2Instr = getArrayNdVariableInstruction(ctx, ctx.variable(1));
         ir.addInstruction(
                 sourceFile, currentLineNumber, ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
                 OpCode.ARRAYCOPY, var1Instr.result, var2Instr.result, NULL_ID);
@@ -4028,14 +4027,14 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitArray1dcopystmt(PuffinBasicParser.Array1dcopystmtContext ctx) {
-        var var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(0), false);
-        var var2Instr = getArray1dVariableInstruction(ctx, ctx.variable(1), false);
+        Instruction var1Instr = getArray1dVariableInstruction(ctx, ctx.variable(0), false);
+        Instruction var2Instr = getArray1dVariableInstruction(ctx, ctx.variable(1), false);
 
-        var src0 = lookupInstruction(ctx.src0);
+        Instruction src0 = lookupInstruction(ctx.src0);
         Types.assertNumeric(ir.getSymbolTable().get(src0.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
-        var dst0 = lookupInstruction(ctx.dst0);
+        Instruction dst0 = lookupInstruction(ctx.dst0);
         Types.assertNumeric(ir.getSymbolTable().get(dst0.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
-        var len = lookupInstruction(ctx.len);
+        Instruction len = lookupInstruction(ctx.len);
         Types.assertNumeric(ir.getSymbolTable().get(len.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
 
         ir.addInstruction(
@@ -4051,8 +4050,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitArray2dshifthorstmt(PuffinBasicParser.Array2dshifthorstmtContext ctx) {
-        var varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
-        var expr = lookupInstruction(ctx.expr());
+        Instruction varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
 
         ir.addInstruction(
@@ -4062,8 +4061,8 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitArray2dshiftverstmt(PuffinBasicParser.Array2dshiftverstmtContext ctx) {
-        var varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
-        var expr = lookupInstruction(ctx.expr());
+        Instruction varInstr = getArray2dVariableInstruction(ctx, ctx.variable());
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
 
         ir.addInstruction(
@@ -4073,9 +4072,9 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
 
     @Override
     public void exitArrayfillstmt(PuffinBasicParser.ArrayfillstmtContext ctx) {
-        var varInstr = getArrayNdVariableInstruction(ctx, ctx.variable());
+        Instruction varInstr = getArrayNdVariableInstruction(ctx, ctx.variable());
 
-        var expr = lookupInstruction(ctx.expr());
+        Instruction expr = lookupInstruction(ctx.expr());
         Types.assertNumeric(ir.getSymbolTable().get(expr.result).getType().getAtomTypeId(), () -> getCtxString(ctx));
 
         ir.addInstruction(
@@ -4104,7 +4103,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private static FileOpenMode getFileOpenMode(PuffinBasicParser.Filemode1Context filemode1) {
-        var mode = filemode1 != null ? unquote(filemode1.getText()) : null;
+        String mode = filemode1 != null ? unquote(filemode1.getText()) : null;
         if (mode == null || mode.equalsIgnoreCase("r")) {
             return FileOpenMode.RANDOM;
         } else if (mode.equalsIgnoreCase("i")) {
@@ -4161,7 +4160,7 @@ public class PuffinBasicIRListener extends PuffinBasicBaseListener {
     }
 
     private void checkDataTypeMatch(STEntry entry1, int id2, Supplier<String> lineSupplier) {
-        var entry2 = ir.getSymbolTable().get(id2);
+        STEntry entry2 = ir.getSymbolTable().get(id2);
         if ((entry1.getType().getAtomTypeId() == STRING && entry2.getType().getAtomTypeId() != STRING) ||
                 (entry1.getType().getAtomTypeId() != STRING && entry2.getType().getAtomTypeId() == STRING)) {
             throw new PuffinBasicSemanticError(

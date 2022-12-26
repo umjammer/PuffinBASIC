@@ -71,7 +71,7 @@ public class PuffinBasicSequentialAccessInputFile implements PuffinBasicFile {
                 lastLine = in.readLine();
             }
             bytesAccessed += lastLine.length();
-            var result = lastLine.stripTrailing();
+            String result = lastLine.replaceFirst("\\s*$", ""); // stripTrailing();
             lastLine = null;
             return result;
         } catch (IOException e) {

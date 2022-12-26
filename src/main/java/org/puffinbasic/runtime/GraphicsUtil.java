@@ -2,7 +2,6 @@ package org.puffinbasic.runtime;
 
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import org.puffinbasic.error.PuffinBasicInternalError;
@@ -14,6 +13,7 @@ import javax.swing.Timer;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -29,7 +29,6 @@ import java.awt.image.DataBufferInt;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
-import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -72,9 +71,9 @@ public final class GraphicsUtil {
                 int iw, int ih,
                 boolean autoRepaint, boolean doubleBuffer)
         {
-            var mouseState = new BasicMouseState(this);
+            BasicMouseState mouseState = new BasicMouseState(this);
 
-            var drawingCanvas = new DrawingCanvas(
+            DrawingCanvas drawingCanvas = new DrawingCanvas(
                     w, h, iw, ih, REFRESH_MILLIS, KEY_BUFFER_SIZE, mouseState, doubleBuffer);
             add(drawingCanvas);
 
@@ -270,7 +269,7 @@ public final class GraphicsUtil {
         void setKeyPressed(String key) {
             synchronized (keyBuffer) {
                 keysPressed.add(key);
-                var lastKey = !keyBuffer.isEmpty() ? keyBuffer.getLast() : null;
+                String lastKey = !keyBuffer.isEmpty() ? keyBuffer.getLast() : null;
                 if (!key.equals(lastKey) && keyBuffer.size() < keyBufferSize) {
                     keyBuffer.add(key);
                 }
@@ -319,13 +318,13 @@ public final class GraphicsUtil {
         }
 
         void floodFill(int x, int y, int r, int g, int b) {
-            var image = canvas.getBack1();
+            BufferedImage image = canvas.getBack1();
             iterativeFloodFill(image, x, y, canvas.getBackGraphics2D().getColor(), new Color(r, g, b));
         }
 
         void point(int x, int y, int r, int g, int b) {
-            var image = canvas.getBack1();
-            var graphics = image.getGraphics();
+            BufferedImage image = canvas.getBack1();
+            Graphics graphics = image.getGraphics();
             Color color;
             if (r != -1 && g != -1 && b != -1) {
                 color = new Color(r, g, b);
@@ -336,8 +335,8 @@ public final class GraphicsUtil {
         }
 
         void bufferCopyHor(int srcx, int dstx, int copyW) {
-            var src = canvas.getFront();
-            var dst = canvas.getBack1();
+            BufferedImage src = canvas.getFront();
+            BufferedImage dst = canvas.getBack1();
             int[] srcArray = ((DataBufferInt) src.getRaster().getDataBuffer()).getData();
             int[] dstArray = ((DataBufferInt) dst.getRaster().getDataBuffer()).getData();
             copyRect(srcArray, srcx, 0, src.getWidth(),
@@ -346,7 +345,7 @@ public final class GraphicsUtil {
         }
 
         void copyGraphicsToArray(int bufferNumber, int x1, int y1, int x2, int y2, int[] dest) {
-            var image = canvas.get(bufferNumber);
+            BufferedImage image = canvas.get(bufferNumber);
             int[] srcArray = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
             int w = Math.abs(x1 - x2);
             int h = Math.abs(y1 - y2);
@@ -355,7 +354,7 @@ public final class GraphicsUtil {
 
         void copyArrayToGraphics(int bufferNumber, int x, int y, int w, int h, String action,
                                  int[] src, int srcx, int srcy, int scanWidth) {
-            var image = canvas.get(bufferNumber);
+            BufferedImage image = canvas.get(bufferNumber);
             int[] dstArray = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
             if (action.equalsIgnoreCase(PUT_PSET)) {
                 copyRect(src, srcx, srcy, scanWidth, dstArray, x, y, image.getWidth(), w, h);
@@ -413,7 +412,7 @@ public final class GraphicsUtil {
         }
 
         void clear() {
-            var image = canvas.getBack1();
+            BufferedImage image = canvas.getBack1();
             image.setRGB(0, 0, w, h, clearBuffer, 0, w);
         }
 
@@ -471,8 +470,8 @@ public final class GraphicsUtil {
     private static void iterativeFloodFill(
             BufferedImage image, int px, int py, Color fill, Color boundary)
     {
-        var visited = new LongOpenHashSet();
-        var queue = new LongArrayFIFOQueue();
+        LongOpenHashSet visited = new LongOpenHashSet();
+        LongArrayFIFOQueue queue = new LongArrayFIFOQueue();
         queue.enqueue(createPoint(px, py));
 
         while (!queue.isEmpty()) {
@@ -483,7 +482,7 @@ public final class GraphicsUtil {
                 continue;
             }
 
-            var atXY = new Color(image.getRGB(x, y));
+            Color atXY = new Color(image.getRGB(x, y));
             if (atXY.getRed() == boundary.getRed()
                     && atXY.getGreen() == boundary.getGreen()
                     && atXY.getBlue() == boundary.getBlue()) {
@@ -499,7 +498,7 @@ public final class GraphicsUtil {
             visited.add(point);
             image.setRGB(x, y, fill.getRGB());
             if (x > 0) {
-                var nextC = new Color(image.getRGB(x - 1, y));
+                Color nextC = new Color(image.getRGB(x - 1, y));
                 if (nextC.getRed() != fill.getRed()
                         || nextC.getGreen() != fill.getGreen()
                         || nextC.getBlue() != fill.getBlue()) {
@@ -507,7 +506,7 @@ public final class GraphicsUtil {
                 }
             }
             if (x < image.getWidth() - 1) {
-                var nextC = new Color(image.getRGB(x + 1, y));
+                Color nextC = new Color(image.getRGB(x + 1, y));
                 if (nextC.getRed() != fill.getRed()
                         || nextC.getGreen() != fill.getGreen()
                         || nextC.getBlue() != fill.getBlue()) {
@@ -515,7 +514,7 @@ public final class GraphicsUtil {
                 }
             }
             if (y > 0) {
-                var nextC = new Color(image.getRGB(x, y - 1));
+                Color nextC = new Color(image.getRGB(x, y - 1));
                 if (nextC.getRed() != fill.getRed()
                         || nextC.getGreen() != fill.getGreen()
                         || nextC.getBlue() != fill.getBlue()) {
@@ -523,7 +522,7 @@ public final class GraphicsUtil {
                 }
             }
             if (y < image.getHeight() - 1) {
-                var nextC = new Color(image.getRGB(x, y + 1));
+                Color nextC = new Color(image.getRGB(x, y + 1));
                 if (nextC.getRed() != fill.getRed()
                         || nextC.getGreen() != fill.getGreen()
                         || nextC.getBlue() != fill.getBlue()) {
@@ -599,7 +598,7 @@ public final class GraphicsUtil {
         int getButtonClicked() {
             lock.writeLock().lock();
             try {
-                var result = buttonClicked;
+                int result = buttonClicked;
                 buttonClicked = -1;
                 return result;
             } finally {
@@ -610,7 +609,7 @@ public final class GraphicsUtil {
         int getButtonPressed() {
             lock.writeLock().lock();
             try {
-                var result = buttonPressed;
+                int result = buttonPressed;
                 buttonPressed = -1;
                 return result;
             } finally {
@@ -621,7 +620,7 @@ public final class GraphicsUtil {
         int getButtonReleased() {
             lock.writeLock().lock();
             try {
-                var result = buttonReleased;
+                int result = buttonReleased;
                 buttonReleased = -1;
                 return result;
             } finally {

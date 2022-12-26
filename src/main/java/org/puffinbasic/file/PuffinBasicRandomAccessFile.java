@@ -3,6 +3,7 @@ package org.puffinbasic.file;
 import com.google.common.base.Preconditions;
 import it.unimi.dsi.fastutil.ints.IntList;
 import org.puffinbasic.domain.PuffinBasicSymbolTable;
+import org.puffinbasic.domain.STObjects;
 import org.puffinbasic.error.PuffinBasicInternalError;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
 import org.jetbrains.annotations.NotNull;
@@ -69,10 +70,10 @@ public class PuffinBasicRandomAccessFile implements PuffinBasicFile {
         Preconditions.checkNotNull(recordParts);
 
         int totalComputedLength = 0;
-        for (var recordPart : recordParts) {
-            var entry = symbolTable.get(recordPart);
-            var value = entry.getValue();
-            var dataType = entry.getType().getAtomTypeId();
+        for (int recordPart : recordParts) {
+            STObjects.STEntry entry = symbolTable.get(recordPart);
+            STObjects.STValue value = entry.getValue();
+            STObjects.PuffinBasicAtomTypeId dataType = entry.getType().getAtomTypeId();
             if (dataType != STRING) {
                 throw new PuffinBasicInternalError(
                         "Expected String recordPart but found: " + dataType
@@ -131,13 +132,13 @@ public class PuffinBasicRandomAccessFile implements PuffinBasicFile {
         this.lastPutRecordNumber = recordNumber;
 
         // Create a new buffer and fill with spaces.
-        var bb = clearAndGetRecordBuffer();
+        ByteBuffer bb = clearAndGetRecordBuffer();
 
         for (int i = 0; i < recordParts.size(); i++) {
-            var entry = symbolTable.get(recordParts.getInt(i)).getValue();
-            var value = entry.getString();
-            var valueLength = value.length();
-            var fieldLength = entry.getFieldLength();
+            STObjects.STValue entry = symbolTable.get(recordParts.getInt(i)).getValue();
+            String value = entry.getString();
+            int valueLength = value.length();
+            int fieldLength = entry.getFieldLength();
 
             // Put first fieldLength bytes only
             if (fieldLength < valueLength) {
@@ -193,11 +194,11 @@ public class PuffinBasicRandomAccessFile implements PuffinBasicFile {
             );
         }
 
-        var bb = ByteBuffer.wrap(recordBuffer);
+        ByteBuffer bb = ByteBuffer.wrap(recordBuffer);
         for (int i = 0; i < recordParts.size(); i++) {
-            var entry = symbolTable.get(recordParts.getInt(i)).getValue();
-            var fieldLength = entry.getFieldLength();
-            var strBytes = new byte[fieldLength];
+            STObjects.STValue entry = symbolTable.get(recordParts.getInt(i)).getValue();
+            int fieldLength = entry.getFieldLength();
+            byte[] strBytes = new byte[fieldLength];
             bb.get(strBytes);
             entry.setString(new String(strBytes));
         }

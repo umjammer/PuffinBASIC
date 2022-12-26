@@ -13,64 +13,10 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.7</maven.compiler.source>
-    <maven.compiler.target>1.7</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
 
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.antlr/antlr4-runtime -->
-    <dependency>
-      <groupId>org.antlr</groupId>
-      <artifactId>antlr4-runtime</artifactId>
-      <version>4.8-1</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>29.0-jre</version>
-    </dependency>
-    <dependency>
-      <groupId>it.unimi.dsi</groupId>
-      <artifactId>fastutil</artifactId>
-      <version>8.4.0</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.jetbrains/annotations -->
-    <dependency>
-      <groupId>org.jetbrains</groupId>
-      <artifactId>annotations</artifactId>
-      <version>19.0.0</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-csv -->
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-csv</artifactId>
-      <version>1.7</version>
-    </dependency>
-    <dependency>
-      <groupId>net.sourceforge.argparse4j</groupId>
-      <artifactId>argparse4j</artifactId>
-      <version>0.8.1</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-math3</artifactId>
-      <version>3.6.1</version>
-    </dependency>
-    <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
-    <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
-      <version>2.7</version>
-    </dependency>
-  </dependencies>
   <build>
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
       <plugins>
@@ -118,50 +64,126 @@
     <plugins>
       <!-- ANTLR4 -->
       <plugin>
-	<groupId>org.antlr</groupId>
-	<artifactId>antlr4-maven-plugin</artifactId>
-	<version>4.8-1</version>
-	<configuration>
-	  <visitor>true</visitor>
-	  <listener>true</listener>
-	</configuration>
-	<executions>
-	  <execution>
-	    <id>antlr</id>
-	    <goals>
-	      <goal>antlr4</goal>
-	    </goals>
-	  </execution>
-	</executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-maven-plugin</artifactId>
+        <version>4.8-1</version>
         <configuration>
-          <source>11</source>
-          <target>11</target>
+          <visitor>true</visitor>
+          <listener>true</listener>
         </configuration>
+        <executions>
+          <execution>
+            <id>antlr</id>
+            <goals>
+              <goal>antlr4</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-	<version>3.0.0</version>
+        <version>3.0.0</version>
         <configuration>
-            <mainClass>org.puffinbasic.PuffinBasicInterpreterMain</mainClass>
+          <mainClass>org.puffinbasic.PuffinBasicInterpreterMain</mainClass>
         </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
         <configuration>
-	  <archive>
-	    <manifest>
-	      <mainClass>org.puffinbasic.PuffinBasicInterpreterMain</mainClass>
-	      <classpathPrefix>dependency-jars/</classpathPrefix>
-	    </manifest>
-	  </archive>
+          <archive>
+            <manifest>
+              <mainClass>org.puffinbasic.PuffinBasicInterpreterMain</mainClass>
+              <classpathPrefix>dependency-jars/</classpathPrefix>
+            </manifest>
+          </archive>
         </configuration>
       </plugin>
     </plugins>
   </build>
+
+  <repositories>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
+  </repositories>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>5.8.2</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- https://mvnrepository.com/artifact/org.antlr/antlr4-runtime -->
+    <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr4-runtime</artifactId>
+      <version>4.8-1</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>31.1-jre</version>
+    </dependency>
+    <dependency>
+      <groupId>it.unimi.dsi</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>8.5.11</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.jetbrains/annotations -->
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+      <version>23.1.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-csv -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-csv</artifactId>
+      <version>1.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>net.sourceforge.argparse4j</groupId>
+      <artifactId>argparse4j</artifactId>
+      <version>0.9.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>3.6.1</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>2.11.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-commons</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

@@ -1,13 +1,5 @@
 package org.puffinbasic.runtime;
 
-import org.apache.commons.io.FilenameUtils;
-import org.puffinbasic.domain.PuffinBasicSymbolTable;
-import org.puffinbasic.error.PuffinBasicRuntimeError;
-import org.puffinbasic.parser.PuffinBasicIR.Instruction;
-import org.puffinbasic.runtime.GraphicsUtil.BasicFrame;
-
-import javax.imageio.ImageIO;
-import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Font;
@@ -15,11 +7,23 @@ import java.awt.Graphics2D;
 import java.awt.Toolkit;
 import java.awt.event.WindowEvent;
 import java.awt.geom.GeneralPath;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
+import javax.swing.SwingUtilities;
+
+import it.unimi.dsi.fastutil.ints.IntList;
+import org.apache.commons.io.FilenameUtils;
+import org.puffinbasic.domain.PuffinBasicSymbolTable;
+import org.puffinbasic.domain.STObjects;
+import org.puffinbasic.error.PuffinBasicRuntimeError;
+import org.puffinbasic.parser.PuffinBasicIR.Instruction;
+import org.puffinbasic.runtime.GraphicsUtil.BasicFrame;
 
 import static org.puffinbasic.domain.PuffinBasicSymbolTable.NULL_ID;
 import static org.puffinbasic.domain.STObjects.PuffinBasicAtomTypeId.INT32;
@@ -93,9 +97,9 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var path = symbolTable.get(instruction.op1).getValue().getString();
-        var entry = symbolTable.getVariable(instruction.op2);
-        var variableValue = entry.getValue();
+        String path = symbolTable.get(instruction.op1).getValue().getString();
+        STObjects.STEntry entry = symbolTable.getVariable(instruction.op2);
+        STObjects.STValue variableValue = entry.getValue();
         if (variableValue.getNumArrayDimensions() != 2 || entry.getType().getAtomTypeId() != INT32) {
             throw new PuffinBasicRuntimeError(
                     GRAPHICS_ERROR,
@@ -103,13 +107,13 @@ class GraphicsRuntime {
             );
         }
 
-        var dims = variableValue.getArrayDimensions();
-        final BufferedImage image = new BufferedImage(dims.getInt(0), dims.getInt(1), BufferedImage.TYPE_3BYTE_BGR);
+        IntList dims = variableValue.getArrayDimensions();
+        BufferedImage image = new BufferedImage(dims.getInt(0), dims.getInt(1), BufferedImage.TYPE_3BYTE_BGR);
 
         image.setRGB(0, 0, image.getWidth(), image.getHeight(),
                 variableValue.getInt32Array1D(), 0, image.getWidth());
 
-        var ext = FilenameUtils.getExtension(path);
+        String ext = FilenameUtils.getExtension(path);
         try {
             ImageIO.write(image, ext, new File(path));
         } catch (IOException e) {
@@ -124,9 +128,9 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var path = symbolTable.get(instruction.op1).getValue().getString();
-        var entry = symbolTable.getVariable(instruction.op2);
-        var variableValue = entry.getValue();
+        String path = symbolTable.get(instruction.op1).getValue().getString();
+        STObjects.STEntry entry = symbolTable.getVariable(instruction.op2);
+        STObjects.STValue variableValue = entry.getValue();
         if (variableValue.getNumArrayDimensions() != 2 || entry.getType().getAtomTypeId() != INT32) {
             throw new PuffinBasicRuntimeError(
                     GRAPHICS_ERROR,
@@ -134,7 +138,7 @@ class GraphicsRuntime {
             );
         }
 
-        final BufferedImage image;
+        BufferedImage image;
         try {
             image = ImageIO.read(new File(path));
         } catch (IOException e) {
@@ -144,7 +148,7 @@ class GraphicsRuntime {
             );
         }
 
-        var dims = variableValue.getArrayDimensions();
+        IntList dims = variableValue.getArrayDimensions();
         if (image.getWidth() != dims.getInt(0) || image.getHeight() != dims.getInt(1)) {
             throw new PuffinBasicRuntimeError(
                     GRAPHICS_ERROR,
@@ -164,14 +168,14 @@ class GraphicsRuntime {
             List<Instruction> instr0,
             Instruction instruction)
     {
-        var i0 = instr0.get(0);
-        var i1 = instr0.get(1);
-        var i2 = instr0.get(2);
-        var w = symbolTable.get(i0.op1).getValue().getInt32();
-        var h = symbolTable.get(i0.op2).getValue().getInt32();
-        var iw = symbolTable.get(i1.op1).getValue().getInt32();
-        var ih = symbolTable.get(i1.op2).getValue().getInt32();
-        var title = symbolTable.get(instruction.op1).getValue().getString();
+        Instruction i0 = instr0.get(0);
+        Instruction i1 = instr0.get(1);
+        Instruction i2 = instr0.get(2);
+        int w = symbolTable.get(i0.op1).getValue().getInt32();
+        int h = symbolTable.get(i0.op2).getValue().getInt32();
+        int iw = symbolTable.get(i1.op1).getValue().getInt32();
+        int ih = symbolTable.get(i1.op2).getValue().getInt32();
+        String title = symbolTable.get(instruction.op1).getValue().getString();
         if (w <= 0 || h <= 0 || w > GraphicsUtil.MAX_WIDTH || h > GraphicsUtil.MAX_HEIGHT) {
             throw new PuffinBasicRuntimeError(
                     GRAPHICS_ERROR,
@@ -184,8 +188,8 @@ class GraphicsRuntime {
                     "Image size out-of-bounds: " + iw + ", " + ih
             );
         }
-        var autoRepaint = symbolTable.get(i2.op1).getValue().getInt32() == -1;
-        var doubleBuffer = symbolTable.get(i2.op2).getValue().getInt32() == -1;
+        boolean autoRepaint = symbolTable.get(i2.op1).getValue().getInt32() == -1;
+        boolean doubleBuffer = symbolTable.get(i2.op2).getValue().getInt32() == -1;
 
         graphicsState.setFrame(new BasicFrame(title, w, h, iw, ih, autoRepaint, doubleBuffer));
         EventQueue.invokeLater(() -> graphicsState.getFrame().setVisible(true));
@@ -196,10 +200,10 @@ class GraphicsRuntime {
             Instruction instr0,
             Instruction instruction)
     {
-        var h = symbolTable.get(instr0.op1).getValue().getFloat32();
-        var s = symbolTable.get(instr0.op2).getValue().getFloat32();
-        var b = symbolTable.get(instruction.op1).getValue().getFloat32();
-        var result = symbolTable.get(instruction.result).getValue();
+        float h = symbolTable.get(instr0.op1).getValue().getFloat32();
+        float s = symbolTable.get(instr0.op2).getValue().getFloat32();
+        float b = symbolTable.get(instruction.op1).getValue().getFloat32();
+        STObjects.STValue result = symbolTable.get(instruction.result).getValue();
         result.setInt32(Color.HSBtoRGB(h, s, b));
     }
 
@@ -211,7 +215,7 @@ class GraphicsRuntime {
         SwingUtilities.invokeLater(
                 () -> {
                     if (graphicsState.isInitialized()) {
-                        var frame = graphicsState.getFrame();
+                        BasicFrame frame = graphicsState.getFrame();
                         frame.dispatchEvent(
                                 new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
                     }
@@ -224,12 +228,12 @@ class GraphicsRuntime {
             List<Instruction> instr0,
             Instruction instruction)
     {
-        var i0 = instr0.get(0);
-        var i1 = instr0.get(1);
-        var i2 = instr0.get(2);
+        Instruction i0 = instr0.get(0);
+        Instruction i1 = instr0.get(1);
+        Instruction i2 = instr0.get(2);
 
-        var x = symbolTable.get(i0.op1).getValue().getInt32();
-        var y = symbolTable.get(i0.op2).getValue().getInt32();
+        int x = symbolTable.get(i0.op1).getValue().getInt32();
+        int y = symbolTable.get(i0.op2).getValue().getInt32();
         Integer s = i1.op1 != NULL_ID ? symbolTable.get(i1.op1).getValue().getInt32() : null;
         Integer e = i1.op1 != NULL_ID ? symbolTable.get(i1.op2).getValue().getInt32() : null;
         int r1 = Math.max(0, symbolTable.get(instruction.op1).getValue().getInt32());
@@ -241,7 +245,7 @@ class GraphicsRuntime {
         int sx = x - r1;
         int sy = y - r2;
 
-        var g = graphicsState.getGraphics2D();
+        Graphics2D g = graphicsState.getGraphics2D();
         if (s == null || e == null) {
             if (fill) {
                 g.fillOval(sx, sy, w, h);
@@ -263,9 +267,9 @@ class GraphicsRuntime {
             Instruction instr0,
             Instruction instruction)
     {
-        var style = symbolTable.get(instr0.op1).getValue().getString().toLowerCase();
-        var size = symbolTable.get(instr0.op2).getValue().getInt32();
-        var name = symbolTable.get(instruction.op1).getValue().getString();
+        String style = symbolTable.get(instr0.op1).getValue().getString().toLowerCase();
+        int size = symbolTable.get(instr0.op2).getValue().getInt32();
+        String name = symbolTable.get(instruction.op1).getValue().getString();
 
         if (name.isEmpty() || size <= 0 || size > GraphicsUtil.MAX_WIDTH) {
             throw new PuffinBasicRuntimeError(
@@ -290,9 +294,9 @@ class GraphicsRuntime {
             Instruction instr0,
             Instruction instruction)
     {
-        var x = symbolTable.get(instr0.op1).getValue().getInt32();
-        var y = symbolTable.get(instr0.op2).getValue().getInt32();
-        var text = symbolTable.get(instruction.op1).getValue().getString();
+        int x = symbolTable.get(instr0.op1).getValue().getInt32();
+        int y = symbolTable.get(instr0.op2).getValue().getInt32();
+        String text = symbolTable.get(instruction.op1).getValue().getString();
 
         graphicsState.getGraphics2D().drawString(text, x, y);
     }
@@ -302,7 +306,7 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var str = symbolTable.get(instruction.op1).getValue().getString();
+        String str = symbolTable.get(instruction.op1).getValue().getString();
         if (str.isEmpty()) {
             throw new PuffinBasicRuntimeError(
                     GRAPHICS_ERROR,
@@ -310,20 +314,20 @@ class GraphicsRuntime {
             );
         }
 
-        var path = new GeneralPath();
+        GeneralPath path = new GeneralPath();
         int w = graphicsState.getImageWidth();
         int h = graphicsState.getImageHeight();
-        path.moveTo(w / 2, h / 2);
+        path.moveTo(w / 2f, h / 2f);
 
-        for (var i : str.split(";")) {
+        for (String i : str.split(";")) {
             i = i.trim();
             if (i.isEmpty()) {
                 continue;
             }
 
-            var curr = path.getCurrentPoint();
+            Point2D curr = path.getCurrentPoint();
             if (i.charAt(0) == 'M') {
-                var m = DRAW_ARG2.matcher(i);
+                Matcher m = DRAW_ARG2.matcher(i);
                 m.find();
                 String x = m.group(1);
                 String y = m.group(2);
@@ -341,7 +345,7 @@ class GraphicsRuntime {
                 }
                 path.moveTo(newX, newY);
             } else {
-                var m = DRAW_ARG1.matcher(i);
+                Matcher m = DRAW_ARG1.matcher(i);
                 m.find();
                 char cmd = m.group(1).charAt(0);
                 String opts = m.group(2) != null ? m.group(2) : "";
@@ -404,13 +408,13 @@ class GraphicsRuntime {
             List<Instruction> instr0,
             Instruction instruction)
     {
-        var i0 = instr0.get(0);
-        var i1 = instr0.get(1);
+        Instruction i0 = instr0.get(0);
+        Instruction i1 = instr0.get(1);
 
-        var x1 = symbolTable.get(i0.op1).getValue().getInt32();
-        var y1 = symbolTable.get(i0.op2).getValue().getInt32();
-        var x2 = symbolTable.get(i1.op1).getValue().getInt32();
-        var y2 = symbolTable.get(i1.op2).getValue().getInt32();
+        int x1 = symbolTable.get(i0.op1).getValue().getInt32();
+        int y1 = symbolTable.get(i0.op2).getValue().getInt32();
+        int x2 = symbolTable.get(i1.op1).getValue().getInt32();
+        int y2 = symbolTable.get(i1.op2).getValue().getInt32();
         String bf = instruction.op1 != NULL_ID
                 ? symbolTable.get(instruction.op1).getValue().getString().toUpperCase()
                 : "";
@@ -439,9 +443,9 @@ class GraphicsRuntime {
             Instruction instr0,
             Instruction instruction)
     {
-        var r = symbolTable.get(instr0.op1).getValue().getInt32();
-        var g = symbolTable.get(instr0.op2).getValue().getInt32();
-        var b = symbolTable.get(instruction.op1).getValue().getInt32();
+        int r = symbolTable.get(instr0.op1).getValue().getInt32();
+        int g = symbolTable.get(instr0.op2).getValue().getInt32();
+        int b = symbolTable.get(instruction.op1).getValue().getInt32();
 
         r = applyColorBounds(r);
         g = applyColorBounds(g);
@@ -460,14 +464,14 @@ class GraphicsRuntime {
             List<Instruction> instr0,
             Instruction instruction)
     {
-        var i0 = instr0.get(0);
-        var i1 = instr0.get(1);
+        Instruction i0 = instr0.get(0);
+        Instruction i1 = instr0.get(1);
 
-        var r = symbolTable.get(i0.op1).getValue().getInt32();
-        var g = symbolTable.get(i0.op2).getValue().getInt32();
-        var b = symbolTable.get(i1.op1).getValue().getInt32();
-        var x = symbolTable.get(instruction.op1).getValue().getInt32();
-        var y = symbolTable.get(instruction.op2).getValue().getInt32();
+        int r = symbolTable.get(i0.op1).getValue().getInt32();
+        int g = symbolTable.get(i0.op2).getValue().getInt32();
+        int b = symbolTable.get(i1.op1).getValue().getInt32();
+        int x = symbolTable.get(instruction.op1).getValue().getInt32();
+        int y = symbolTable.get(instruction.op2).getValue().getInt32();
 
         if (x < 0 || y < 0 || x > graphicsState.getImageWidth() || y > graphicsState.getImageHeight()) {
             throw new PuffinBasicRuntimeError(
@@ -489,14 +493,14 @@ class GraphicsRuntime {
             List<Instruction> instr0,
             Instruction instruction)
     {
-        var i0 = instr0.get(0);
-        var i1 = instr0.get(1);
+        Instruction i0 = instr0.get(0);
+        Instruction i1 = instr0.get(1);
 
-        var r = i0.op1 != NULL_ID ? symbolTable.get(i0.op1).getValue().getInt32() : -1;
-        var g = i0.op2 != NULL_ID ? symbolTable.get(i0.op2).getValue().getInt32() : -1;
-        var b = i1.op1 != NULL_ID ? symbolTable.get(i1.op1).getValue().getInt32() : -1;
-        var x = symbolTable.get(instruction.op1).getValue().getInt32();
-        var y = symbolTable.get(instruction.op2).getValue().getInt32();
+        int r = i0.op1 != NULL_ID ? symbolTable.get(i0.op1).getValue().getInt32() : -1;
+        int g = i0.op2 != NULL_ID ? symbolTable.get(i0.op2).getValue().getInt32() : -1;
+        int b = i1.op1 != NULL_ID ? symbolTable.get(i1.op1).getValue().getInt32() : -1;
+        int x = symbolTable.get(instruction.op1).getValue().getInt32();
+        int y = symbolTable.get(instruction.op2).getValue().getInt32();
 
         r = applyColorBounds(r);
         g = applyColorBounds(g);
@@ -519,9 +523,9 @@ class GraphicsRuntime {
             Instruction instr0,
             Instruction instruction)
     {
-        var srcx = symbolTable.get(instr0.op1).getValue().getInt32();
-        var dstx = symbolTable.get(instr0.op2).getValue().getInt32();
-        var w = symbolTable.get(instruction.op1).getValue().getInt32();
+        int srcx = symbolTable.get(instr0.op1).getValue().getInt32();
+        int dstx = symbolTable.get(instr0.op2).getValue().getInt32();
+        int w = symbolTable.get(instruction.op1).getValue().getInt32();
 
         if (srcx < 0 || dstx < 0 || w < 0
                 || srcx > graphicsState.getImageWidth()
@@ -543,15 +547,15 @@ class GraphicsRuntime {
             List<Instruction> instr0,
             Instruction instruction)
     {
-        var i0 = instr0.get(0);
-        var i1 = instr0.get(1);
+        Instruction i0 = instr0.get(0);
+        Instruction i1 = instr0.get(1);
 
-        var x1 = symbolTable.get(i0.op1).getValue().getInt32();
-        var y1 = symbolTable.get(i0.op2).getValue().getInt32();
-        var x2 = symbolTable.get(i1.op1).getValue().getInt32();
-        var y2 = symbolTable.get(i1.op2).getValue().getInt32();
+        int x1 = symbolTable.get(i0.op1).getValue().getInt32();
+        int y1 = symbolTable.get(i0.op2).getValue().getInt32();
+        int x2 = symbolTable.get(i1.op1).getValue().getInt32();
+        int y2 = symbolTable.get(i1.op2).getValue().getInt32();
 
-        var variable = symbolTable.getVariable(instruction.op1);
+        STObjects.STEntry variable = symbolTable.getVariable(instruction.op1);
         if (variable.getType().getTypeId() != ARRAY
                 || variable.getValue().getNumArrayDimensions() != 2
                 || variable.getType().getAtomTypeId() != INT32)
@@ -575,7 +579,7 @@ class GraphicsRuntime {
             );
         }
 
-        final int bufferNumber = symbolTable.get(instruction.op2).getValue().getInt32();
+        int bufferNumber = symbolTable.get(instruction.op2).getValue().getInt32();
 
         graphicsState.getFrame().getDrawingCanvas().copyGraphicsToArray(
                 bufferNumber, x1, y1, x2, y2, variable.getValue().getInt32Array1D()
@@ -589,16 +593,16 @@ class GraphicsRuntime {
             Instruction instr1,
             Instruction instruction)
     {
-        var x = symbolTable.get(instr0.op1).getValue().getInt32();
-        var y = symbolTable.get(instr0.op2).getValue().getInt32();
-        var action = instruction.op1 != NULL_ID
+        int x = symbolTable.get(instr0.op1).getValue().getInt32();
+        int y = symbolTable.get(instr0.op2).getValue().getInt32();
+        String action = instruction.op1 != NULL_ID
                 ? symbolTable.get(instruction.op1).getValue().getString()
                 : PUT_XOR;
         action = action.toUpperCase();
-        final int bufferNumber = symbolTable.get(instr1.op1).getValue().getInt32();
+        int bufferNumber = symbolTable.get(instr1.op1).getValue().getInt32();
 
-        var variable = symbolTable.getVariable(instruction.op2);
-        var value = variable.getValue();
+        STObjects.STEntry variable = symbolTable.getVariable(instruction.op2);
+        STObjects.STValue value = variable.getValue();
         if (variable.getType().getTypeId() != ARRAY
                 || value.getNumArrayDimensions() != 2
                 || variable.getType().getAtomTypeId() != INT32)
@@ -612,7 +616,7 @@ class GraphicsRuntime {
         int CW = graphicsState.getImageWidth();
         int CH = graphicsState.getImageHeight();
 
-        var dims = value.getArrayDimensions();
+        IntList dims = value.getArrayDimensions();
         int iw = dims.getInt(0);
         int ih = dims.getInt(1);
 
@@ -652,7 +656,7 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var key = graphicsState.getFrame().getDrawingCanvas().takeNextKey();
+        String key = graphicsState.getFrame().getDrawingCanvas().takeNextKey();
         symbolTable.get(instruction.result).getValue().setString(key);
     }
 
@@ -661,8 +665,8 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var file = symbolTable.get(instruction.op1).getValue().getString();
-        var variable = symbolTable.getVariable(instruction.op2).getValue();
+        String file = symbolTable.get(instruction.op1).getValue().getString();
+        STObjects.STValue variable = symbolTable.getVariable(instruction.op2).getValue();
         variable.setInt32(soundState.load(file));
     }
 
@@ -671,7 +675,7 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var id = symbolTable.get(instruction.op1).getValue().getInt32();
+        int id = symbolTable.get(instruction.op1).getValue().getInt32();
         soundState.play(id);
     }
 
@@ -680,7 +684,7 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var id = symbolTable.get(instruction.op1).getValue().getInt32();
+        int id = symbolTable.get(instruction.op1).getValue().getInt32();
         soundState.stop(id);
     }
 
@@ -689,7 +693,7 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var id = symbolTable.get(instruction.op1).getValue().getInt32();
+        int id = symbolTable.get(instruction.op1).getValue().getInt32();
         soundState.loop(id);
     }
 
@@ -761,7 +765,7 @@ class GraphicsRuntime {
             PuffinBasicSymbolTable symbolTable,
             Instruction instruction)
     {
-        var key = symbolTable.get(instruction.op1).getValue().getString();
+        String key = symbolTable.get(instruction.op1).getValue().getString();
         symbolTable.get(instruction.result).getValue().setInt32(
                 graphicsState.getFrame().getDrawingCanvas().isKeyPressed(key) ? -1 : 0);
     }

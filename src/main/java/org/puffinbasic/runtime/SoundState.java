@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
 
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -11,6 +12,7 @@ import javax.sound.sampled.DataLine;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.puffinbasic.error.PuffinBasicRuntimeError.ErrorCode.ILLEGAL_FUNCTION_PARAM;
@@ -45,9 +47,9 @@ public class SoundState implements AutoCloseable {
     }
 
     public int load(String file) {
-        var future = executor.submit(() -> {
-            var audioFile = new File(file);
-            final AudioInputStream audioStream;
+        Future<Integer> future = executor.submit(() -> {
+            File audioFile = new File(file);
+            AudioInputStream audioStream;
             try {
                 audioStream = AudioSystem.getAudioInputStream(audioFile);
             } catch (Exception e) {
@@ -56,9 +58,9 @@ public class SoundState implements AutoCloseable {
                         "Failed to load audio file: " + file + ", error: " + e.getMessage()
                 );
             }
-            var format = audioStream.getFormat();
-            var info = new DataLine.Info(Clip.class, format);
-            final Clip clip;
+            AudioFormat format = audioStream.getFormat();
+            DataLine.Info info = new DataLine.Info(Clip.class, format);
+            Clip clip;
             try {
                 clip = (Clip) AudioSystem.getLine(info);
                 clip.open(audioStream);
@@ -68,7 +70,7 @@ public class SoundState implements AutoCloseable {
                         "Failed to get/open line from audio: " + file + ", error: " + e.getMessage()
                 );
             }
-            var id = counter.incrementAndGet();
+            int id = counter.incrementAndGet();
             state.put(id, new ClipState(audioStream, clip));
             return id;
         });
@@ -83,7 +85,7 @@ public class SoundState implements AutoCloseable {
     }
 
     private ClipState get(int id) {
-        var s = state.get(id);
+        ClipState s = state.get(id);
         if (s == null) {
             throw new PuffinBasicRuntimeError(
                     ILLEGAL_FUNCTION_PARAM,
@@ -95,7 +97,7 @@ public class SoundState implements AutoCloseable {
 
     public void play(int id) {
         executor.submit(() -> {
-            var clip = get(id).clip;
+            Clip clip = get(id).clip;
             if (clip.isRunning()) {
                 clip.stop();
             }
@@ -106,7 +108,7 @@ public class SoundState implements AutoCloseable {
 
     public void stop(int id) {
         executor.submit(() -> {
-            var clip = get(id).clip;
+            Clip clip = get(id).clip;
             if (clip.isRunning()) {
                 clip.stop();
             }
@@ -115,7 +117,7 @@ public class SoundState implements AutoCloseable {
 
     public void loop(int id) {
         executor.submit(() -> {
-            var clip = get(id).clip;
+            Clip clip = get(id).clip;
             if (clip.isRunning()) {
                 clip.stop();
             }

@@ -3,9 +3,11 @@ package org.puffinbasic;
 import com.google.common.base.Strings;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
@@ -51,19 +53,19 @@ public final class PuffinBasicInterpreterMain {
     }
 
     public static void main(String... args) {
-        var userOptions = parseCommandLineArgs(args);
+        UserOptions userOptions = parseCommandLineArgs(args);
 
         String mainSource = userOptions.filename;
 
         Instant t0 = Instant.now();
-        var sourceCode = loadSource(mainSource);
+        String sourceCode = loadSource(mainSource);
         logTimeTaken("LOAD", t0, userOptions.timing);
 
         interpretAndRun(userOptions, mainSource, sourceCode, System.out, new SystemEnv());
     }
 
     private static UserOptions parseCommandLineArgs(String... args) {
-        var parser = ArgumentParsers
+        ArgumentParser parser = ArgumentParsers
                 .newFor("PuffinBasic")
                 .build();
         parser.addArgument("-d", "--logduplicate")
@@ -104,7 +106,7 @@ public final class PuffinBasicInterpreterMain {
     }
 
     private static String loadSource(String filename) {
-        var sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         try (Stream<String> stream = Files.lines(Paths.get(filename), StandardCharsets.US_ASCII)) {
             stream.forEach(s -> sb.append(s).append(System.lineSeparator()));
         } catch (IOException e) {
@@ -131,10 +133,10 @@ public final class PuffinBasicInterpreterMain {
             PrintStream out,
             Environment env)
     {
-        var importPath = new PuffinBasicImportPath(sourceFilename);
+        PuffinBasicImportPath importPath = new PuffinBasicImportPath(sourceFilename);
 
         Instant t1 = Instant.now();
-        var sourceFile = syntaxCheckAndSortByLineNumber(
+        PuffinBasicSourceFile sourceFile = syntaxCheckAndSortByLineNumber(
                 importPath,
                 sourceFilename,
                 sourceCode,
@@ -150,12 +152,12 @@ public final class PuffinBasicInterpreterMain {
         log(sourceFile.getSourceCode(), userOptions.listSourceCode);
 
         Instant t2 = Instant.now();
-        var ir = generateIR(sourceFile, userOptions.graphics);
+        PuffinBasicIR ir = generateIR(sourceFile, userOptions.graphics);
         logTimeTaken("IR", t2, userOptions.timing);
         log("IR", userOptions.printIR);
         if (userOptions.printIR) {
             int i = 0;
-            for (var instruction : ir.getInstructions()) {
+            for (PuffinBasicIR.Instruction instruction : ir.getInstructions()) {
                 log(i++ + ": " + instruction, true);
             }
         }
@@ -173,20 +175,20 @@ public final class PuffinBasicInterpreterMain {
     }
 
     private static void logTimeTaken(String tag, Instant t1, boolean log) {
-        var duration  = Duration.between(t1, Instant.now());
-        var timeSec = duration.getSeconds() + duration.getNano() / 1000_000_000.0;
+        Duration duration  = Duration.between(t1, Instant.now());
+        double timeSec = duration.getSeconds() + duration.getNano() / 1000_000_000.0;
         log("[" + tag + "] time taken = " + timeSec + " s", log);
     }
 
     private static void run(PuffinBasicIR ir, PrintStream out, Environment env) {
-        var runtime = new PuffinBasicRuntime(ir, out, env);
+        PuffinBasicRuntime runtime = new PuffinBasicRuntime(ir, out, env);
         runtime.run();
     }
 
     private static PuffinBasicIR generateIR(PuffinBasicSourceFile sourceFile, boolean graphics) {
-        var symbolTable = new PuffinBasicSymbolTable();
-        var ir = new PuffinBasicIR(symbolTable);
-        for (var importFile : sourceFile.getImportFiles()) {
+        PuffinBasicSymbolTable symbolTable = new PuffinBasicSymbolTable();
+        PuffinBasicIR ir = new PuffinBasicIR(symbolTable);
+        for (PuffinBasicSourceFile importFile : sourceFile.getImportFiles()) {
             generateIR(importFile, ir, graphics);
         }
         generateIR(sourceFile, ir, graphics);
@@ -194,13 +196,13 @@ public final class PuffinBasicInterpreterMain {
     }
 
     private static void generateIR(PuffinBasicSourceFile sourceFile, PuffinBasicIR ir, boolean graphics) {
-        var in = sourceFile.getSourceCodeStream();
-        var lexer = new PuffinBasicLexer(in);
-        var tokens = new CommonTokenStream(lexer);
-        var parser = new PuffinBasicParser(tokens);
-        var tree = parser.prog();
-        var walker = new ParseTreeWalker();
-        var irListener = new PuffinBasicIRListener(sourceFile, in, ir, graphics);
+        CharStream in = sourceFile.getSourceCodeStream();
+        PuffinBasicLexer lexer = new PuffinBasicLexer(in);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        PuffinBasicParser parser = new PuffinBasicParser(tokens);
+        PuffinBasicParser.ProgContext tree = parser.prog();
+        ParseTreeWalker walker = new ParseTreeWalker();
+        PuffinBasicIRListener irListener = new PuffinBasicIRListener(sourceFile, in, ir, graphics);
         walker.walk(irListener, tree);
         irListener.semanticCheckAfterParsing();
     }
@@ -212,18 +214,18 @@ public final class PuffinBasicInterpreterMain {
             ThrowOnDuplicate throwOnDuplicate,
             SourceFileMode sourceFileMode)
     {
-        var in = CharStreams.fromString(input);
-        var syntaxErrorListener = new ThrowingErrorListener(input);
-        var lexer = new PuffinBasicLexer(in);
+        CharStream in = CharStreams.fromString(input);
+        ThrowingErrorListener syntaxErrorListener = new ThrowingErrorListener(input);
+        PuffinBasicLexer lexer = new PuffinBasicLexer(in);
         lexer.removeErrorListeners();
         lexer.addErrorListener(syntaxErrorListener);
-        var tokens = new CommonTokenStream(lexer);
-        var parser = new PuffinBasicParser(tokens);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        PuffinBasicParser parser = new PuffinBasicParser(tokens);
         parser.removeErrorListeners();
         parser.addErrorListener(syntaxErrorListener);
-        var tree = parser.prog();
-        var walker = new ParseTreeWalker();
-        var linenumListener = new LinenumberListener(in, throwOnDuplicate);
+        PuffinBasicParser.ProgContext tree = parser.prog();
+        ParseTreeWalker walker = new ParseTreeWalker();
+        LinenumberListener linenumListener = new LinenumberListener(in, throwOnDuplicate);
         walker.walk(linenumListener, tree);
 
         if (sourceFileMode == SourceFileMode.LIB) {
@@ -243,8 +245,8 @@ public final class PuffinBasicInterpreterMain {
 
         LinkedHashSet<PuffinBasicSourceFile> importSourceFiles = new LinkedHashSet<>();
         for (String importFilename : linenumListener.getImportFiles()) {
-            var importedInput = loadSource(importPath.find(importFilename));
-            var importSourceFile = syntaxCheckAndSortByLineNumber(
+            String importedInput = loadSource(importPath.find(importFilename));
+            PuffinBasicSourceFile importSourceFile = syntaxCheckAndSortByLineNumber(
                     importPath, importFilename, importedInput,
                     throwOnDuplicate, SourceFileMode.LIB);
             importSourceFiles.add(importSourceFile);
@@ -277,8 +279,8 @@ public final class PuffinBasicInterpreterMain {
                 String msg,
                 RecognitionException e)
         {
-            var lineIndex = line - 1;
-            var lines = input.split(System.lineSeparator());
+            int lineIndex = line - 1;
+            String[] lines = input.split(System.lineSeparator());
             String inputLine;
             if (lineIndex >= 0 && lineIndex < lines.length) {
                 inputLine = lines[lineIndex];

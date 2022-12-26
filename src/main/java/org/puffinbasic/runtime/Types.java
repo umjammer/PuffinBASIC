@@ -1,21 +1,18 @@
 package org.puffinbasic.runtime;
 
+import java.util.function.Supplier;
+
 import org.puffinbasic.domain.PuffinBasicSymbolTable;
 import org.puffinbasic.domain.STObjects;
-import org.puffinbasic.domain.STObjects.ArrayType;
 import org.puffinbasic.domain.STObjects.PuffinBasicAtomTypeId;
 import org.puffinbasic.domain.STObjects.STLValue;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
 import org.puffinbasic.error.PuffinBasicSemanticError;
-import org.puffinbasic.parser.PuffinBasicIR;
 import org.puffinbasic.parser.PuffinBasicIR.Instruction;
-
-import java.util.function.Supplier;
 
 import static org.puffinbasic.domain.STObjects.PuffinBasicAtomTypeId.INT32;
 import static org.puffinbasic.domain.STObjects.PuffinBasicAtomTypeId.INT64;
 import static org.puffinbasic.domain.STObjects.PuffinBasicAtomTypeId.STRING;
-import static org.puffinbasic.domain.STObjects.PuffinBasicTypeId.ARRAY;
 import static org.puffinbasic.domain.STObjects.PuffinBasicTypeId.SCALAR;
 import static org.puffinbasic.error.PuffinBasicRuntimeError.ErrorCode.BAD_FIELD;
 import static org.puffinbasic.error.PuffinBasicSemanticError.ErrorCode.DATA_TYPE_MISMATCH;
@@ -23,14 +20,14 @@ import static org.puffinbasic.error.PuffinBasicSemanticError.ErrorCode.DATA_TYPE
 public class Types {
 
     public static void copy(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var fromEntry = symbolTable.get(instruction.op1);
-        var toEntry = symbolTable.get(instruction.op2);
+        STObjects.STEntry fromEntry = symbolTable.get(instruction.op1);
+        STObjects.STEntry toEntry = symbolTable.get(instruction.op2);
         toEntry.getValue().assign(fromEntry.getValue());
     }
 
     public static void paramCopy(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var fromEntry = symbolTable.get(instruction.op1);
-        var toEntry = symbolTable.get(instruction.op2);
+        STObjects.STEntry fromEntry = symbolTable.get(instruction.op1);
+        STObjects.STEntry toEntry = symbolTable.get(instruction.op2);
         if (toEntry.getType().getTypeId() == SCALAR) {
             toEntry.getValue().assign(fromEntry.getValue());
         } else if (toEntry.isLValue()) {
@@ -44,8 +41,8 @@ public class Types {
     }
 
     public static void varref(PuffinBasicSymbolTable symbolTable, Instruction instruction) {
-        var src = symbolTable.get(instruction.op1);
-        var dst = symbolTable.get(instruction.op2);
+        STObjects.STEntry src = symbolTable.get(instruction.op1);
+        STObjects.STEntry dst = symbolTable.get(instruction.op2);
         if (dst.isLValue()) {
             ((STLValue) dst).setValue(src.getValue());
         } else {
