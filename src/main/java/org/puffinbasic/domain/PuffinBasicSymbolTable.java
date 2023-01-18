@@ -295,4 +295,8 @@ public class PuffinBasicSymbolTable {
         }
         currentScope = parent;
     }
+
+    public STEntry getLastEntry() {
+        return lastEntry;
+    }
 }

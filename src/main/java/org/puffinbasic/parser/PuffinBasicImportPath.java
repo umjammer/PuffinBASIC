@@ -15,6 +15,9 @@ public class PuffinBasicImportPath {
     private final String mainModulePath;
     private final List<String> searchPaths;
 
+    /**
+     * @param mainPath null: use current directory, else: use parent directory of <code>mainPath</code>.
+     */
     public PuffinBasicImportPath(String mainPath) {
         this.mainModulePath =mainPath != null
                 ? new File(mainPath).getParent()

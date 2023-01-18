@@ -11,21 +11,22 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.puffinbasic.PuffinBasicInterpreterMain.UserOptions;
+import org.puffinbasic.PuffinBasicInterpreter.UserOptions;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
 import org.puffinbasic.runtime.Environment;
 import org.puffinbasic.runtime.Environment.SystemEnv;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.puffinbasic.PuffinBasicInterpreterMain.interpretAndRun;
 import static org.puffinbasic.error.PuffinBasicRuntimeError.ErrorCode.IO_ERROR;
 
 public class IntegrationTest {
 
     private Environment env;
+    private PuffinBasicInterpreter interpreter;
 
     @BeforeEach
     public void setup() {
+        interpreter = new PuffinBasicInterpreter();
         env = new SystemEnv();
     }
 
@@ -189,7 +190,7 @@ public class IntegrationTest {
     private void runTest(String source, String output) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(bos);
-        interpretAndRun(
+        interpreter.interpretAndRun(
                 UserOptions.ofTest(),
                 loadSourceCodeFromResource(source),
                 out,
@@ -203,13 +204,11 @@ public class IntegrationTest {
     }
 
     private String loadSourceCodeFromResource(String filename) {
-        return loadResource(
-                getClass().getClassLoader().getResource(filename));
+        return loadResource(getClass().getClassLoader().getResource(filename));
     }
 
     private String loadOutputFromResource(String filename) {
-        return loadResource(
-                getClass().getClassLoader().getResource(filename));
+        return loadResource(getClass().getClassLoader().getResource(filename));
     }
 
     private static String loadResource(URL resource) {

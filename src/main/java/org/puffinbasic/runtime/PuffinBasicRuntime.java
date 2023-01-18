@@ -1,9 +1,16 @@
 package org.puffinbasic.runtime;
 
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntStack;
+import org.puffinbasic.domain.STObjects;
 import org.puffinbasic.error.PuffinBasicInternalError;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
 import org.puffinbasic.file.PuffinBasicFiles;
@@ -14,12 +21,6 @@ import org.puffinbasic.runtime.ArraysUtil.ArrayState;
 import org.puffinbasic.runtime.Formatter.FormatterCache;
 import org.puffinbasic.runtime.GraphicsRuntime.GraphicsState;
 import org.puffinbasic.runtime.Statements.ReadData;
-
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
 
 import static org.puffinbasic.domain.PuffinBasicSymbolTable.NULL_ID;
 import static org.puffinbasic.parser.PuffinBasicIR.OpCode.DATA;
@@ -90,7 +91,7 @@ public class PuffinBasicRuntime {
         return instrNum;
     }
 
-    public void run() {
+    public STObjects.STEntry run() {
         List<Instruction> instructions = ir.getInstructions();
         this.labelToInstrNum = computeLabelToInstructionNumber(instructions);
         this.lineNumToInstrNum = computeLineNumberToInstructionNumber(instructions);
@@ -118,8 +119,10 @@ public class PuffinBasicRuntime {
                     throw new PuffinBasicRuntimeError(e, instruction, ir.getCodeStreamFor(instruction));
                 }
             }
+            return ir.getSymbolTable().getLastEntry();
         } catch (Exception e) {
             e.printStackTrace(System.err);
+            return null;
         } finally {
             GraphicsRuntime.end(graphicsState);
             soundState.close();

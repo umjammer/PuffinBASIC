@@ -1,5 +1,14 @@
 package org.puffinbasic;
 
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.stream.Stream;
+
 import com.google.common.base.Strings;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
@@ -16,6 +25,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.puffinbasic.antlr4.PuffinBasicLexer;
 import org.puffinbasic.antlr4.PuffinBasicParser;
 import org.puffinbasic.domain.PuffinBasicSymbolTable;
+import org.puffinbasic.domain.STObjects;
 import org.puffinbasic.error.PuffinBasicRuntimeError;
 import org.puffinbasic.error.PuffinBasicSyntaxError;
 import org.puffinbasic.parser.LinenumberListener;
@@ -28,22 +38,12 @@ import org.puffinbasic.runtime.Environment;
 import org.puffinbasic.runtime.Environment.SystemEnv;
 import org.puffinbasic.runtime.PuffinBasicRuntime;
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.LinkedHashSet;
-import java.util.stream.Stream;
-
 import static org.puffinbasic.error.PuffinBasicRuntimeError.ErrorCode.IMPORT_ERROR;
 import static org.puffinbasic.error.PuffinBasicRuntimeError.ErrorCode.IO_ERROR;
 import static org.puffinbasic.parser.LinenumberListener.ThrowOnDuplicate.LOG;
 import static org.puffinbasic.parser.LinenumberListener.ThrowOnDuplicate.THROW;
 
-public final class PuffinBasicInterpreterMain {
+public final class PuffinBasicInterpreter {
 
     private static final String UNKNOWN_SOURCE_FILE = "<UNKNOWN>";
 
@@ -53,18 +53,20 @@ public final class PuffinBasicInterpreterMain {
     }
 
     public static void main(String... args) {
-        UserOptions userOptions = parseCommandLineArgs(args);
+        PuffinBasicInterpreter app = new PuffinBasicInterpreter();
+
+        UserOptions userOptions = app.parseCommandLineArgs(args);
 
         String mainSource = userOptions.filename;
 
         Instant t0 = Instant.now();
-        String sourceCode = loadSource(mainSource);
-        logTimeTaken("LOAD", t0, userOptions.timing);
+        String sourceCode = app.loadSource(mainSource);
+        app.logTimeTaken("LOAD", t0, userOptions.timing);
 
-        interpretAndRun(userOptions, mainSource, sourceCode, System.out, new SystemEnv());
+        app.interpretAndRun(userOptions, mainSource, sourceCode, System.out, new SystemEnv());
     }
 
-    private static UserOptions parseCommandLineArgs(String... args) {
+    private UserOptions parseCommandLineArgs(String... args) {
         ArgumentParser parser = ArgumentParsers
                 .newFor("PuffinBasic")
                 .build();
@@ -105,9 +107,9 @@ public final class PuffinBasicInterpreterMain {
         );
     }
 
-    private static String loadSource(String filename) {
+    private String loadSource(String filename) {
         StringBuilder sb = new StringBuilder();
-        try (Stream<String> stream = Files.lines(Paths.get(filename), StandardCharsets.US_ASCII)) {
+        try (Stream<String> stream = Files.lines(Paths.get(filename))) {
             stream.forEach(s -> sb.append(s).append(System.lineSeparator()));
         } catch (IOException e) {
             throw new PuffinBasicRuntimeError(
@@ -117,16 +119,17 @@ public final class PuffinBasicInterpreterMain {
         }
         return sb.toString();
     }
-    static void interpretAndRun(
+
+    public Object interpretAndRun(
             UserOptions userOptions,
             String sourceCode,
             PrintStream out,
             Environment env)
     {
-        interpretAndRun(userOptions, UNKNOWN_SOURCE_FILE, sourceCode, out, env);
+        return interpretAndRun(userOptions, UNKNOWN_SOURCE_FILE, sourceCode, out, env);
     }
 
-    static void interpretAndRun(
+    public Object interpretAndRun(
             UserOptions userOptions,
             String sourceFilename,
             String sourceCode,
@@ -164,8 +167,9 @@ public final class PuffinBasicInterpreterMain {
 
         log("RUN", userOptions.timing);
         Instant t3 = Instant.now();
-        run(ir, out, env);
+        Object result = run(ir, out, env);
         logTimeTaken("RUN", t3, userOptions.timing);
+        return result;
     }
 
     private static void log(String s, boolean log) {
@@ -180,9 +184,26 @@ public final class PuffinBasicInterpreterMain {
         log("[" + tag + "] time taken = " + timeSec + " s", log);
     }
 
-    private static void run(PuffinBasicIR ir, PrintStream out, Environment env) {
+    private static Object run(PuffinBasicIR ir, PrintStream out, Environment env) {
         PuffinBasicRuntime runtime = new PuffinBasicRuntime(ir, out, env);
-        runtime.run();
+        STObjects.STEntry entry = runtime.run();
+        // TODO complete
+        switch (entry.getType().getTypeId()) {
+        case SCALAR:
+            switch (entry.getType().getAtomTypeId()) {
+            case INT32:
+                return entry.getValue().getInt32();
+            case DOUBLE:
+                return entry.getValue().getFloat64();
+            case STRING:
+                return entry.getValue().getString();
+            default:
+                return null;
+            }
+        case ARRAY:
+        default:
+            return null;
+        }
     }
 
     private static PuffinBasicIR generateIR(PuffinBasicSourceFile sourceFile, boolean graphics) {
@@ -207,7 +228,7 @@ public final class PuffinBasicInterpreterMain {
         irListener.semanticCheckAfterParsing();
     }
 
-    private static PuffinBasicSourceFile syntaxCheckAndSortByLineNumber(
+    private PuffinBasicSourceFile syntaxCheckAndSortByLineNumber(
             PuffinBasicImportPath importPath,
             String sourceFile,
             String input,
@@ -296,7 +317,6 @@ public final class PuffinBasicInterpreterMain {
                     + inputLine
             );
         }
-
     }
 
     public static final class UserOptions {
@@ -304,6 +324,12 @@ public final class PuffinBasicInterpreterMain {
         static UserOptions ofTest() {
             return new UserOptions(
                     false, false, false, false, false, null
+            );
+        }
+
+        public static UserOptions ofScript() {
+            return new UserOptions(
+                    false, false, false, false, true, null
             );
         }
 
@@ -330,5 +356,4 @@ public final class PuffinBasicInterpreterMain {
             this.filename = filename;
         }
     }
-
 }
