@@ -1,3 +1,18 @@
+[![Release](https://jitpack.io/v/umjammer/PuffinBASIC.svg)](https://jitpack.io/#umjammer/PuffinBASIC)
+[![Java CI](https://github.com/umjammer/PuffinBASIC/actions/workflows/maven.yml/badge.svg)](https://github.com/umjammer/PuffinBASIC/actions/workflows/maven.yml)
+[![CodeQL](https://github.com/umjammer/PuffinBASIC/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/umjammer/PuffinBASIC/actions/workflows/codeql-analysis.yml)
+![Java](https://img.shields.io/badge/Java-8-b07219)
+
+mavenized, jsr-223-nized PuffinBASIC
+
+## TODO
+
+ * implement N88-BASIC
+ * 
+
+---
+[Original]()
+
 <img src="puffin.png" width="64"/>
 
 # PuffinBASIC
@@ -11,7 +26,7 @@ PuffinBASIC conforms most closely to GWBASIC.
 
 ### 2D Scrolling Game (Teaser)
 
-YouTube Video: <a href="https://youtu.be/m3snkPVhhVo"><img src="samples/nextGame.png"></a>
+YouTube Video: <a href="https://youtu.be/m3snkPVhhVo"><img src="samples/nextGame.png" width="320"></a>
 Source: Under development, not committed yet
 
 ### TESSEL - A 2D Tile Game

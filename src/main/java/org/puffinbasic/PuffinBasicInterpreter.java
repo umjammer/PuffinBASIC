@@ -61,7 +61,7 @@ public final class PuffinBasicInterpreter {
 
         Instant t0 = Instant.now();
         String sourceCode = app.loadSource(mainSource);
-        app.logTimeTaken("LOAD", t0, userOptions.timing);
+        logTimeTaken("LOAD", t0, userOptions.timing);
 
         app.interpretAndRun(userOptions, mainSource, sourceCode, System.out, new SystemEnv());
     }
